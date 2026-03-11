@@ -1,24 +1,83 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Colors, FontSize } from '@/constants/theme';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { initializeDatabase } from '@/database/schema';
+import { registerBackgroundSync } from '@/services/backgroundSync';
+import { addNetworkListener, startNetworkMonitor } from '@/services/network';
+import { syncPendingRecords } from '@/services/sync';
 import { Stack } from 'expo-router';
+import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import React, { Suspense } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+// Start network monitoring and background sync at app level
+startNetworkMonitor();
+registerBackgroundSync().catch(console.error);
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+// Auto-sync when connection is restored
+addNetworkListener((isConnected) => {
+  if (isConnected) {
+    console.log('[App] Conexión detectada, iniciando sincronización...');
+    syncPendingRecords().catch(console.error);
+  }
+});
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
+function LoadingScreen() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <View style={styles.loading}>
+      <ActivityIndicator size="large" color={Colors.primary} />
+      <Text style={styles.loadingText}>Cargando...</Text>
+    </View>
   );
 }
+
+function RootNavigation() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        {user ? (
+          <Stack.Screen name="(tabs)" />
+        ) : (
+          <Stack.Screen name="login" />
+        )}
+      </Stack>
+      <StatusBar style="dark" />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <SQLiteProvider
+        databaseName="app.db"
+        onInit={initializeDatabase}
+        useSuspense={true}
+      >
+        <AuthProvider>
+          <RootNavigation />
+        </AuthProvider>
+      </SQLiteProvider>
+    </Suspense>
+  );
+}
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    gap: 16,
+  },
+  loadingText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.md,
+  },
+});

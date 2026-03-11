@@ -1,0 +1,201 @@
+import { Button } from '@/components/Button';
+import { FormInput } from '@/components/FormInput';
+import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { authenticateUser } from '@/database/operations';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import React, { useState } from 'react';
+import {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+
+export default function LoginScreen() {
+    const db = useSQLiteContext();
+    const { login } = useAuth();
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleLogin = async () => {
+        if (!username.trim() || !password.trim()) {
+            setError('Por favor ingresa usuario y contraseña');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            const user = await authenticateUser(db, username.trim(), password);
+
+            if (user) {
+                await login(user);
+                router.replace('/(tabs)/form');
+            } else {
+                setError('Usuario o contraseña incorrectos');
+            }
+        } catch (err) {
+            setError('Error al iniciar sesión');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+            >
+                {/* Logo / Header */}
+                <View style={styles.header}>
+                    <View style={styles.logoContainer}>
+                        <Ionicons name="people-circle" size={80} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.title}>ElimAPP</Text>
+                    <View style={styles.goldLine} />
+                    <Text style={styles.subtitle}>Iglesia de la Cruz</Text>
+                </View>
+
+                {/* Login Form */}
+                <View style={styles.formContainer}>
+                    {error ? (
+                        <View style={styles.errorBox}>
+                            <Ionicons name="alert-circle" size={18} color={Colors.error} />
+                            <Text style={styles.errorText}>{error}</Text>
+                        </View>
+                    ) : null}
+
+                    <FormInput
+                        label="Usuario"
+                        placeholder="Ingresa tu usuario"
+                        value={username}
+                        onChangeText={setUsername}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        icon={<Ionicons name="person-outline" size={20} color={Colors.textMuted} />}
+                    />
+
+                    <FormInput
+                        label="Contraseña"
+                        placeholder="Ingresa tu contraseña"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                        icon={<Ionicons name="lock-closed-outline" size={20} color={Colors.textMuted} />}
+                    />
+
+                    <Button
+                        title="Iniciar Sesión"
+                        onPress={handleLogin}
+                        loading={loading}
+                        style={styles.loginButton}
+                        icon={<Ionicons name="log-in-outline" size={20} color={Colors.white} />}
+                    />
+
+                    <Text style={styles.hint}>
+                        Usuario por defecto: admin / admin123
+                    </Text>
+                </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: Colors.background,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        padding: Spacing.lg,
+    },
+    header: {
+        alignItems: 'center',
+        marginBottom: Spacing.xxl,
+    },
+    logoContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: Colors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: Spacing.lg,
+        borderWidth: 2,
+        borderColor: Colors.gold,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    title: {
+        color: Colors.primary,
+        fontSize: FontSize.title,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    goldLine: {
+        width: 60,
+        height: 3,
+        backgroundColor: Colors.gold,
+        borderRadius: 2,
+        marginVertical: Spacing.sm,
+    },
+    subtitle: {
+        color: Colors.textSecondary,
+        fontSize: FontSize.md,
+    },
+    formContainer: {
+        backgroundColor: Colors.white,
+        borderRadius: BorderRadius.xl,
+        padding: Spacing.lg,
+        borderWidth: 1,
+        borderColor: Colors.cardBorder,
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    errorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        backgroundColor: 'rgba(231, 76, 60, 0.08)',
+        padding: Spacing.md,
+        borderRadius: BorderRadius.md,
+        marginBottom: Spacing.md,
+        borderLeftWidth: 3,
+        borderLeftColor: Colors.error,
+    },
+    errorText: {
+        color: Colors.error,
+        fontSize: FontSize.sm,
+        flex: 1,
+    },
+    loginButton: {
+        marginTop: Spacing.sm,
+    },
+    hint: {
+        color: Colors.textMuted,
+        fontSize: FontSize.xs,
+        textAlign: 'center',
+        marginTop: Spacing.md,
+    },
+});

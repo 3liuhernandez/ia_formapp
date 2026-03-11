@@ -1,53 +1,75 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-import { Platform } from 'react-native';
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
+  // Primary palette
+  primary: '#1A5276',         // Azul oscuro
+  primaryLight: '#2980B9',    // Azul medio
+  secondary: '#2E86C1',       // Azul brillante
+  accent: '#1A5276',          // Azul para botones
+  accentLight: '#3498DB',     // Azul claro
+
+  // Wine red for details
+  wine: '#722F37',            // Rojo vino
+  wineLight: '#8E3A42',       // Vino claro
+  wineSoft: 'rgba(114, 47, 55, 0.12)', // Vino translúcido
+
+  // Gold for decorations
+  gold: '#C9A84C',            // Dorado
+  goldLight: '#D4B86A',       // Dorado claro
+  goldDark: '#B8941F',        // Dorado oscuro
+  goldSoft: 'rgba(201, 168, 76, 0.15)', // Dorado translúcido
+
+  // Surfaces
+  background: '#FFFFFF',      // Blanco
+  surface: '#F8F9FA',         // Gris muy claro
+  surfaceLight: '#EDF2F7',    // Gris claro
+  card: '#FFFFFF',            // Blanco
+  cardBorder: '#E2E8F0',      // Borde suave
+
+  // Text
+  text: '#1A202C',            // Texto oscuro
+  textSecondary: '#4A5568',   // Texto secundario
+  textMuted: '#A0AEC0',       // Texto muted
+
+  // Inputs
+  inputBg: '#F7FAFC',         // Fondo input
+  inputBorder: '#CBD5E0',     // Borde input
+  inputFocus: '#2980B9',      // Foco azul
+
+  // Status
+  success: '#27AE60',         // Verde éxito
+  warning: '#F39C12',         // Naranja warning
+  error: '#E74C3C',           // Rojo error
+  errorLight: '#F1948A',
+
+  // Base
+  white: '#FFFFFF',
+  black: '#000000',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  shadow: 'rgba(0, 0, 0, 0.1)',
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+export const Spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+};
+
+export const FontSize = {
+  xs: 12,
+  sm: 14,
+  md: 16,
+  lg: 18,
+  xl: 22,
+  xxl: 28,
+  title: 34,
+};
+
+export const BorderRadius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  full: 999,
+};
