@@ -56,6 +56,7 @@ export async function syncPendingRecords(): Promise<{
                     sector_barrio: persona.sector_barrio,
                     fecha_nacimiento: persona.fecha_nacimiento,
                     genero: persona.genero,
+                    registrant_id: persona.registrant_id || '',
                 });
 
                 if (result.success) {

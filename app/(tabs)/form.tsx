@@ -61,7 +61,7 @@ export default function FormScreen() {
         setLoading(true);
         try {
             const db = await getDb(contextDb);
-            await insertPersona(db, form, user?.id ?? 1);
+            await insertPersona(db, { ...form, registrant_id: user?.cedula || '' }, user?.id ?? 1);
             setForm({ ...EMPTY_FORM });
             if (isConnected) {
                 setModalMessage('Registro guardado exitosamente'); setModalIsOffline(false);

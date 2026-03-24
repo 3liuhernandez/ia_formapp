@@ -13,6 +13,7 @@ export interface Persona {
     genero: 'M' | 'F';
     synced: number; // 0 = pendiente, 1 = sincronizado
     created_at: string;
+    registrant_id?: string;
 }
 
 export interface PersonaInput {
@@ -27,12 +28,14 @@ export interface PersonaInput {
     sector_barrio: string;
     fecha_nacimiento: string;
     genero: 'M' | 'F';
+    registrant_id?: string;
 }
 
 export interface User {
     id: number;
     username: string;
     nombre: string;
+    cedula: string;
 }
 
 export interface SyncStats {

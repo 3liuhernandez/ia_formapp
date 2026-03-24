@@ -5,7 +5,7 @@ import { registerBackgroundSync } from '@/services/backgroundSync';
 import { addNetworkListener, startNetworkMonitor } from '@/services/network';
 import { syncPendingRecords } from '@/services/sync';
 import { Stack } from 'expo-router';
-import { SQLiteProvider } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import React, { Suspense } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -33,15 +33,31 @@ function LoadingScreen() {
 
 function RootNavigation() {
   const { user, isLoading } = useAuth();
+  const db = useSQLiteContext();
+  const [hasProfile, setHasProfile] = React.useState<boolean | null>(null);
 
-  if (isLoading) {
+  React.useEffect(() => {
+    async function checkProfile() {
+      try {
+        const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+        setHasProfile(!!profile);
+      } catch (e) {
+        setHasProfile(false);
+      }
+    }
+    checkProfile();
+  }, []);
+
+  if (isLoading || hasProfile === null) {
     return <LoadingScreen />;
   }
 
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        {user ? (
+        {!hasProfile ? (
+          <Stack.Screen name="register" />
+        ) : user ? (
           <Stack.Screen name="(tabs)" />
         ) : (
           <Stack.Screen name="login" />

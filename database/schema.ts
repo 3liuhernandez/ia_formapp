@@ -31,6 +31,21 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
       user_id INTEGER,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS profile (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cedula TEXT NOT NULL UNIQUE,
+      nombres TEXT NOT NULL,
+      apellidos TEXT NOT NULL,
+      telefono TEXT NOT NULL,
+      email TEXT DEFAULT '',
+      sexo TEXT DEFAULT 'M',
+      brand TEXT DEFAULT '',
+      model TEXT DEFAULT '',
+      os_version TEXT DEFAULT '',
+      device_id TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
   `);
 
   // Add new columns if upgrading from old schema
@@ -44,6 +59,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
     { name: 'telefono_opcional', type: "TEXT DEFAULT ''" },
     { name: 'punto_referencia', type: "TEXT DEFAULT ''" },
     { name: 'sector_barrio', type: "TEXT DEFAULT ''" },
+    { name: 'registrant_id', type: "TEXT DEFAULT ''" },
   ];
 
   for (const col of newColumns) {

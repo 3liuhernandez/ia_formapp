@@ -11,8 +11,8 @@ export async function insertPersona(
     userId: number
 ): Promise<number> {
     const result = await db.runAsync(
-        `INSERT INTO personas (nombre, cedula, edad, telefono, telefono_opcional, email, direccion, punto_referencia, sector_barrio, fecha_nacimiento, genero, synced, user_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+        `INSERT INTO personas (nombre, cedula, edad, telefono, telefono_opcional, email, direccion, punto_referencia, sector_barrio, fecha_nacimiento, genero, synced, user_id, registrant_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
         [
             persona.nombre,
             persona.cedula,
@@ -26,6 +26,7 @@ export async function insertPersona(
             persona.fecha_nacimiento,
             persona.genero,
             userId,
+            persona.registrant_id || '',
         ]
     );
     return result.lastInsertRowId;
@@ -108,12 +109,12 @@ export async function authenticateUser(
         [username, password]
     );
     if (!user) return null;
-    return { id: user.id, username: user.username, nombre: user.nombre };
+    return { id: user.id, username: user.username, nombre: user.nombre, cedula: user.cedula || '' };
 }
 
 export async function getUserById(db: SQLiteDatabase, id: number): Promise<User | null> {
     return await db.getFirstAsync<User>(
-        'SELECT id, username, nombre FROM users WHERE id = ?',
+        'SELECT id, username, nombre, cedula FROM users WHERE id = ?',
         [id]
     );
 }
@@ -124,4 +125,31 @@ export async function updateUserPassword(
     newPassword: string
 ): Promise<void> {
     await db.runAsync('UPDATE users SET password_hash = ? WHERE id = ?', [newPassword, userId]);
+}
+
+// ========================
+// PROFILE OPERATIONS
+// ========================
+
+export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<void> {
+    await db.runAsync(
+        `INSERT OR REPLACE INTO profile (cedula, nombres, apellidos, telefono, email, sexo, brand, model, os_version, device_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            profile.cedula,
+            profile.nombres,
+            profile.apellidos,
+            profile.telefono,
+            profile.email,
+            profile.sexo,
+            profile.brand,
+            profile.model,
+            profile.os_version,
+            profile.device_id,
+        ]
+    );
+}
+
+export async function getProfile(db: SQLiteDatabase): Promise<any | null> {
+    return await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
 }
