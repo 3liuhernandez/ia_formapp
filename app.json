@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "ElimAPP",
-    "slug": "stg",
+    "slug": "elimapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "stg",
+    "scheme": "elimapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
