@@ -1,9 +1,12 @@
 import type { PersonaInput } from '@/types';
 
 // =============================================
-// CONFIGURA AQUÍ TU API
+// CONFIGURA AQUÍ TU API (Desde .env)
 // =============================================
-const API_BASE_URL = 'http://26.26.96.74:3001/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
+
+// API Key para autenticación (Desde .env)
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY || '';
 
 // =============================================
 
@@ -22,6 +25,7 @@ async function request(
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
+                'X-API-Key': API_KEY,
                 ...options.headers,
             },
             ...options,
