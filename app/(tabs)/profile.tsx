@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -19,10 +19,25 @@ export default function ProfileScreen() {
     const { user, logout } = useAuth();
     const isConnected = useNetworkStatus();
     const [stats, setStats] = useState<SyncStats>({ total: 0, synced: 0, pending: 0 });
+    const [profile, setProfile] = useState<any>(null);
 
     useFocusEffect(useCallback(() => {
-        getSyncStats(db).then(setStats).catch(console.error);
-    }, []));
+        let mounted = true;
+        const load = async () => {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (!mounted || !db) return;
+            try {
+                const s = await getSyncStats(db);
+                if (mounted) setStats(s);
+                const p = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+                if (mounted) setProfile(p);
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        load();
+        return () => { mounted = false; };
+    }, [db]));
 
     const handleLogout = () => {
         Alert.alert('Cerrar Sesión', '¿Estás seguro?', [
@@ -44,8 +59,18 @@ export default function ProfileScreen() {
                 <View style={styles.avatarContainer}>
                     <Ionicons name="person" size={48} color={Colors.primary} />
                 </View>
-                <Text style={styles.userName}>{user?.nombre || 'Usuario'}</Text>
-                <Text style={styles.userUsername}>@{user?.username || 'usuario'}</Text>
+                <Text style={styles.userName}>{profile ? `${profile.nombres} ${profile.apellidos}` : (user?.nombre || 'Usuario')}</Text>
+                <Text style={styles.userUsername}>{profile?.email || '-'}</Text>
+
+                {profile && (
+                    <TouchableOpacity
+                        style={styles.editBadge}
+                        onPress={() => router.push('/register')}
+                    >
+                        <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.editBadgeText}>Editar Perfil</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <View style={styles.section}>
@@ -70,7 +95,27 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Información</Text>
+                <Text style={styles.sectionTitle}>Mi Información</Text>
+                <View style={styles.statsCard}>
+                    <InfoRow icon="call-outline" label="Teléfono" value={profile?.telefono || '-'} />
+                    <View style={styles.divider} />
+                    <InfoRow icon="mail-outline" label="Correo" value={profile?.email || '-'} />
+                    <View style={styles.divider} />
+                    <InfoRow icon="male-female-outline" label="Sexo" value={profile?.sexo === 'M' ? 'Hombre' : 'Mujer'} />
+                </View>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Identificación de Dispositivo</Text>
+                <View style={styles.statsCard}>
+                    <InfoRow icon="phone-portrait-outline" label="Marca / Modelo" value={`${profile?.brand || '-'} / ${profile?.model || '-'}`} />
+                    <View style={styles.divider} />
+                    <InfoRow icon="hardware-chip-outline" label="ID Sistema" value={profile?.device_id || '-'} />
+                </View>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Sincronización</Text>
                 <View style={styles.infoCard}>
                     <Ionicons name="information-circle" size={20} color={Colors.primary} />
                     <Text style={styles.infoText}>
@@ -90,6 +135,18 @@ export default function ProfileScreen() {
                 <Text style={styles.versionText}>Versión {APP_VERSION}</Text>
             </View>
         </ScrollView>
+    );
+}
+
+function InfoRow({ icon, label, value }: { icon: any; label: string; value: string }) {
+    return (
+        <View style={styles.statRow}>
+            <View style={styles.statLeft}>
+                <Ionicons name={icon} size={20} color={Colors.textMuted} />
+                <Text style={styles.statLabel}>{label}</Text>
+            </View>
+            <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">{value}</Text>
+        </View>
     );
 }
 
@@ -119,6 +176,12 @@ const styles = StyleSheet.create({
     },
     userName: { color: Colors.text, fontSize: FontSize.xl, fontWeight: '800' },
     userUsername: { color: Colors.textMuted, fontSize: FontSize.md, marginTop: Spacing.xs },
+    editBadge: {
+        flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.md,
+        paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full,
+        backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.cardBorder,
+    },
+    editBadgeText: { color: Colors.primary, fontSize: FontSize.xs, fontWeight: '600' },
     section: { marginBottom: Spacing.lg },
     sectionTitle: { color: Colors.wine, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.md },
     statsCard: {
@@ -140,6 +203,7 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: Colors.cardBorder, flexDirection: 'row', gap: Spacing.md,
     },
     infoText: { color: Colors.textSecondary, fontSize: FontSize.sm, flex: 1, lineHeight: 20 },
+    infoValue: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600', maxWidth: '60%' },
     logoutButton: { marginTop: Spacing.sm },
     // Version
     versionContainer: { alignItems: 'center', marginTop: Spacing.xl, paddingTop: Spacing.lg },

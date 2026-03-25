@@ -37,31 +37,61 @@ function RootNavigation() {
   const [hasProfile, setHasProfile] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
+    let mounted = true;
+
     async function checkProfile() {
+      // Pequeña espera para asegurar que el contexto nativo esté listo
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       try {
+        if (!db) return;
+        
+        // Verificamos si la tabla existe primero para evitar crash nativo
+        const tableCheck = await db.getAllAsync<{ name: string }>(
+           "SELECT name FROM sqlite_master WHERE type='table' AND name='profile'"
+        );
+        
+        if (tableCheck.length === 0) {
+          if (mounted) setHasProfile(false);
+          return;
+        }
+
         const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
-        setHasProfile(!!profile);
+        if (mounted) setHasProfile(!!profile);
       } catch (e) {
-        setHasProfile(false);
+        if (mounted) setHasProfile(false);
       }
     }
+    
     checkProfile();
-  }, []);
+    return () => { mounted = false; };
+  }, [db]);
 
   if (isLoading || hasProfile === null) {
     return <LoadingScreen />;
   }
 
+  if (hasProfile === false) {
+    return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="register" />
+      </Stack>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="login" />
+      </Stack>
+    );
+  }
+
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        {!hasProfile ? (
-          <Stack.Screen name="register" />
-        ) : user ? (
-          <Stack.Screen name="(tabs)" />
-        ) : (
-          <Stack.Screen name="login" />
-        )}
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="register" options={{ headerShown: true, title: 'Editar Perfil', presentation: 'modal' }} />
       </Stack>
       <StatusBar style="dark" />
     </>

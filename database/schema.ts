@@ -44,6 +44,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
       model TEXT DEFAULT '',
       os_version TEXT DEFAULT '',
       device_id TEXT DEFAULT '',
+      synced INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
   `);
@@ -53,7 +54,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
     "PRAGMA table_info(personas)"
   );
   const columnNames = columns.map(c => c.name);
-
+ 
   const newColumns = [
     { name: 'edad', type: "TEXT DEFAULT ''" },
     { name: 'telefono_opcional', type: "TEXT DEFAULT ''" },
@@ -67,6 +68,14 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
       await db.execAsync(`ALTER TABLE personas ADD COLUMN ${col.name} ${col.type}`);
       console.log(`[DB] Columna '${col.name}' agregada`);
     }
+  }
+
+  // Auto-migrate profile table
+  const profileCols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(profile)");
+  const profileColNames = profileCols.map(c => c.name);
+  if (!profileColNames.includes('synced')) {
+    await db.execAsync('ALTER TABLE profile ADD COLUMN synced INTEGER DEFAULT 0');
+    console.log('[DB] Columna "synced" agregada a la tabla profile');
   }
 
   // Create default admin user if none exists

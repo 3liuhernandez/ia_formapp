@@ -1,4 +1,4 @@
-import { getUnsyncedPersonas, markAsSynced } from '@/database/operations';
+import { getUnsyncedPersonas, markAsSynced, getUnsyncedProfile, markProfileAsSynced } from '@/database/operations';
 import { initializeDatabase } from '@/database/schema';
 import { sendPersonaToApi } from '@/services/api';
 import { isOnline } from '@/services/network';
@@ -33,6 +33,28 @@ export async function syncPendingRecords(): Promise<{
 
     try {
         const db = await getInitializedDb();
+        // 1. Sync Profile first
+        const unsyncedProfile = await getUnsyncedProfile(db);
+        if (unsyncedProfile) {
+            console.log(`[Sync] Sincronizando perfil de ${unsyncedProfile.cedula}...`);
+            try {
+                const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/registrants`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': process.env.EXPO_PUBLIC_API_KEY || '',
+                    },
+                    body: JSON.stringify(unsyncedProfile),
+                });
+                if (response.ok) {
+                    await markProfileAsSynced(db, unsyncedProfile.cedula);
+                    console.log('[Sync] ✓ Perfil sincronizado');
+                }
+            } catch (err) {
+                console.warn('[Sync] ✗ Error sincronizando perfil:', err);
+            }
+        }
+
         const pending = await getUnsyncedPersonas(db);
 
         if (pending.length === 0) {

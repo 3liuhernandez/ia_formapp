@@ -28,6 +28,7 @@ export default function RegisterScreen() {
     const router = useRouter();
     const { login } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
     const [form, setForm] = useState({
         cedula: '',
         nombres: '',
@@ -37,6 +38,46 @@ export default function RegisterScreen() {
         sexo: 'M',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const isEditing = React.useRef(false);
+
+    React.useEffect(() => {
+        let mounted = true;
+        const loadExistingProfile = async () => {
+            // Esperamos un poco para evitar crash en la animación de entrada
+            // y para que el usuario no vea el "parpadeo" de etiquetas
+            await new Promise(resolve => setTimeout(resolve, 600));
+            
+            try {
+                if (!db || !mounted) return;
+                
+                const tableCheck = await db.getAllAsync<{ name: string }>(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='profile'"
+                );
+                
+                if (tableCheck.length > 0) {
+                    const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+                    if (profile && mounted) {
+                        isEditing.current = true;
+                        setForm({
+                            cedula: (profile as any).cedula,
+                            nombres: (profile as any).nombres,
+                            apellidos: (profile as any).apellidos,
+                            telefono: (profile as any).telefono,
+                            email: (profile as any).email || '',
+                            sexo: (profile as any).sexo || 'M',
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            } finally {
+                if (mounted) setInitialLoading(false);
+            }
+        };
+        loadExistingProfile();
+        return () => { mounted = false; };
+    }, [db]);
 
     const updateField = (field: string, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
@@ -98,8 +139,13 @@ export default function RegisterScreen() {
                 nombre: `${form.nombres} ${form.apellidos}`
             });
 
-            Alert.alert('¡Éxito!', 'Perfil configurado correctamente.');
-            router.replace('/(tabs)/form');
+            Alert.alert('¡Éxito!', isEditing.current ? 'Perfil actualizado.' : 'Perfil configurado correctamente.');
+            
+            if (isEditing.current) {
+                router.back();
+            } else {
+                router.replace('/(tabs)/form');
+            }
 
         } catch (error) {
             console.error(error);
@@ -109,6 +155,15 @@ export default function RegisterScreen() {
         }
     };
 
+    if (initialLoading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={styles.loadingText}>Cargando información...</Text>
+            </View>
+        );
+    }
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -116,9 +171,9 @@ export default function RegisterScreen() {
         >
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.header}>
-                    <Ionicons name="person-add" size={40} color={Colors.primary} />
-                    <Text style={styles.title}>Configurar Perfil</Text>
-                    <Text style={styles.subtitle}>Solo necesitamos esto la primera vez</Text>
+                    <Ionicons name={isEditing.current ? "create" : "person-add"} size={40} color={Colors.primary} />
+                    <Text style={styles.title}>{isEditing.current ? "Editar Perfil" : "Configurar Perfil"}</Text>
+                    { !isEditing.current && <Text style={styles.subtitle}>Solo necesitamos esto la primera vez</Text> }
                 </View>
 
                 <View style={styles.card}>
@@ -186,11 +241,20 @@ export default function RegisterScreen() {
                     </View>
 
                     <Button
-                        title="Comenzar"
+                        title={isEditing.current ? "Guardar Cambios" : "Comenzar"}
                         onPress={handleRegister}
                         loading={loading}
                         style={styles.btn}
                     />
+
+                    {isEditing.current && (
+                        <TouchableOpacity 
+                            onPress={() => router.back()} 
+                            style={styles.cancelLink}
+                        >
+                            <Text style={styles.cancelText}>Cancelar</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -199,6 +263,8 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
+    loadingText: { marginTop: Spacing.md, color: Colors.textSecondary, fontSize: FontSize.md },
     scroll: { padding: Spacing.xl, paddingTop: 60 },
     header: { alignItems: 'center', marginBottom: Spacing.xl },
     title: { fontSize: 28, fontWeight: '800', color: Colors.primary, marginTop: Spacing.sm },
@@ -223,5 +289,7 @@ const styles = StyleSheet.create({
     genderBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
     genderText: { fontWeight: '600', color: Colors.textSecondary },
     genderTextActive: { color: Colors.white },
-    btn: { marginTop: Spacing.md }
+    btn: { marginTop: Spacing.md },
+    cancelLink: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.sm },
+    cancelText: { color: Colors.textMuted, fontSize: FontSize.md, fontWeight: '600' }
 });

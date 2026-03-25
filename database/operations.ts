@@ -133,8 +133,8 @@ export async function updateUserPassword(
 
 export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<void> {
     await db.runAsync(
-        `INSERT OR REPLACE INTO profile (cedula, nombres, apellidos, telefono, email, sexo, brand, model, os_version, device_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO profile (cedula, nombres, apellidos, telefono, email, sexo, brand, model, os_version, device_id, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             profile.cedula,
             profile.nombres,
@@ -146,10 +146,19 @@ export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<voi
             profile.model,
             profile.os_version,
             profile.device_id,
+            profile.synced || 0,
         ]
     );
 }
 
 export async function getProfile(db: SQLiteDatabase): Promise<any | null> {
     return await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+}
+
+export async function getUnsyncedProfile(db: SQLiteDatabase): Promise<any | null> {
+    return await db.getFirstAsync('SELECT * FROM profile WHERE synced = 0 LIMIT 1');
+}
+
+export async function markProfileAsSynced(db: SQLiteDatabase, cedula: string): Promise<void> {
+    await db.runAsync('UPDATE profile SET synced = 1 WHERE cedula = ?', [cedula]);
 }

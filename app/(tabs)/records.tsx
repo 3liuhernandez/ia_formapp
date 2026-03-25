@@ -44,7 +44,11 @@ export default function RecordsScreen() {
     const [exporting, setExporting] = useState(false);
 
     const loadData = useCallback(async () => {
+        // Delay para evitar crash nativo durante la navegación/animación
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         try {
+            if (!db) return;
             const data = search.trim() ? await searchPersonas(db, search.trim()) : await getAllPersonas(db);
             setPersonas(data);
             setStats(await getSyncStats(db));
