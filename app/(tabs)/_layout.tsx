@@ -1,6 +1,8 @@
-import { Colors, FontSize, Spacing } from '@/constants/theme';
+// import { SyncBadge } from '@/components/SyncBadge';
+import { Colors, Spacing } from '@/constants/theme';
+// import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, useRouter, usePathname } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 function CustomTopHeader() {
   const router = useRouter();
   const pathname = usePathname();
+  // const isConnected = useNetworkStatus();
 
   const tabs = [
     { name: 'form', label: 'Registrar', icon: 'create', path: '/form' },
@@ -26,6 +29,7 @@ function CustomTopHeader() {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.onlineStatus} />
+          {/* <SyncBadge isConnected={isConnected} /> */}
         </View>
       </View>
 
