@@ -11,16 +11,9 @@ import React, { Suspense } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 // Start network monitoring and background sync at app level
+// Network monitor start is ok, but listener with sync should be inside provider
 startNetworkMonitor();
 registerBackgroundSync().catch(console.error);
-
-// Auto-sync when connection is restored
-addNetworkListener((isConnected) => {
-  if (isConnected) {
-    console.log('[App] Conexión detectada, iniciando sincronización...');
-    syncPendingRecords().catch(console.error);
-  }
-});
 
 function LoadingScreen() {
   return (
@@ -40,31 +33,35 @@ function RootNavigation() {
     let mounted = true;
 
     async function checkProfile() {
-      // Pequeña espera para asegurar que el contexto nativo esté listo
-      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!db || !mounted) return;
+      console.log('[Layout] Verificando perfil...');
       
       try {
-        if (!db) return;
-        
-        // Verificamos si la tabla existe primero para evitar crash nativo
-        const tableCheck = await db.getAllAsync<{ name: string }>(
-           "SELECT name FROM sqlite_master WHERE type='table' AND name='profile'"
-        );
-        
-        if (tableCheck.length === 0) {
-          if (mounted) setHasProfile(false);
-          return;
-        }
-
-        const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+        const profile = await db.getFirstAsync('SELECT id FROM profile LIMIT 1');
+        console.log('[Layout] Perfil encontrado:', profile ? 'SÍ' : 'NO');
         if (mounted) setHasProfile(!!profile);
       } catch (e) {
+        // Si la tabla no existe, fallará. Esto es normal en el primer inicio.
+        console.log('[Layout] Tabla profile no existe o error (primer inicio)');
         if (mounted) setHasProfile(false);
       }
     }
     
     checkProfile();
     return () => { mounted = false; };
+  }, [db]);
+
+  // Auto-sync when connection is restored, using context DB
+  React.useEffect(() => {
+    const removeListener = addNetworkListener((isConnected) => {
+      if (isConnected && db) {
+        console.log('[App] Conexión detectada, sincronizando desde contexto...');
+        syncPendingRecords(db).catch(console.error);
+      }
+    });
+    return () => {
+      if (typeof removeListener === 'function') removeListener();
+    };
   }, [db]);
 
   if (isLoading || hasProfile === null) {
@@ -102,9 +99,9 @@ export default function RootLayout() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <SQLiteProvider
-        databaseName="app.db"
+        databaseName="app_v3.db"
         onInit={initializeDatabase}
-        useSuspense={true}
+        useSuspense={false}
       >
         <AuthProvider>
           <RootNavigation />

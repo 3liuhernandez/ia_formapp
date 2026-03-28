@@ -10,25 +10,35 @@ export async function insertPersona(
     persona: PersonaInput,
     userId: number
 ): Promise<number> {
-    const result = await db.runAsync(
-        `INSERT INTO personas (nombre, cedula, edad, telefono, telefono_opcional, email, direccion, punto_referencia, sector_barrio, fecha_nacimiento, genero, synced, user_id, registrant_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-        [
-            persona.nombre,
-            persona.cedula,
-            persona.edad,
-            persona.telefono,
-            persona.telefono_opcional,
-            persona.email,
-            persona.direccion,
-            persona.punto_referencia,
-            persona.sector_barrio,
-            persona.fecha_nacimiento,
-            persona.genero,
-            userId,
-            persona.registrant_id || '',
-        ]
-    );
+    // Reparación de emergencia en caso de que falte la columna por migración fallida
+    try {
+        const info = await db.getAllAsync<{ name: string }>("PRAGMA table_info(personas)");
+        if (!info.some(c => c.name === 'registrant_id')) {
+            await db.execAsync("ALTER TABLE personas ADD COLUMN registrant_id TEXT DEFAULT ''");
+            console.log("[DB] Columna 'registrant_id' reparada exitosamente");
+        }
+    } catch (e) { console.error("[DB] Error verificando esquema:", e); }
+
+    const sql = "INSERT INTO personas (nombre, cedula, edad, telefono, telefono_opcional, email, direccion, punto_referencia, sector_barrio, fecha_nacimiento, genero, synced, user_id, registrant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const params = [
+        persona.nombre || '',
+        persona.cedula || '',
+        persona.edad || null,
+        persona.telefono || '',
+        persona.telefono_opcional || null,
+        persona.email || null,
+        persona.direccion || null,
+        persona.punto_referencia || null,
+        persona.sector_barrio || null,
+        persona.fecha_nacimiento || null,
+        persona.genero || 'M',
+        0,
+        userId || null,
+        persona.registrant_id || null,
+    ];
+
+    console.log('[DB] Insert Persona Params:', JSON.stringify(params));
+    const result = await db.runAsync(sql, params);
     return result.lastInsertRowId;
 }
 
@@ -136,17 +146,17 @@ export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<voi
         `INSERT OR REPLACE INTO profile (cedula, nombres, apellidos, telefono, email, sexo, brand, model, os_version, device_id, synced)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-            profile.cedula,
-            profile.nombres,
-            profile.apellidos,
-            profile.telefono,
-            profile.email,
-            profile.sexo,
-            profile.brand,
-            profile.model,
-            profile.os_version,
-            profile.device_id,
-            profile.synced || 0,
+            profile.cedula ?? '',
+            profile.nombres ?? '',
+            profile.apellidos ?? '',
+            profile.telefono ?? '',
+            profile.email ?? '',
+            profile.sexo ?? 'M',
+            profile.brand ?? '',
+            profile.model ?? '',
+            profile.os_version ?? '',
+            profile.device_id ?? '',
+            profile.synced ?? 0,
         ]
     );
 }
@@ -161,4 +171,8 @@ export async function getUnsyncedProfile(db: SQLiteDatabase): Promise<any | null
 
 export async function markProfileAsSynced(db: SQLiteDatabase, cedula: string): Promise<void> {
     await db.runAsync('UPDATE profile SET synced = 1 WHERE cedula = ?', [cedula]);
+}
+
+export async function clearProfile(db: SQLiteDatabase): Promise<void> {
+    await db.runAsync('DELETE FROM profile');
 }

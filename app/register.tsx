@@ -4,6 +4,7 @@ import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { saveProfile } from '@/database/operations';
 import { sendPersonaToApi } from '@/services/api'; // We'll use this or similar for registrant
+import { getApiConfig } from '@/services/settings';
 import { Ionicons } from '@expo/vector-icons';
 import * as Device from 'expo-device';
 import { useRouter } from 'expo-router';
@@ -46,31 +47,25 @@ export default function RegisterScreen() {
         const loadExistingProfile = async () => {
             // Esperamos un poco para evitar crash en la animación de entrada
             // y para que el usuario no vea el "parpadeo" de etiquetas
-            await new Promise(resolve => setTimeout(resolve, 600));
+            await new Promise(resolve => setTimeout(resolve, 200));
             
             try {
                 if (!db || !mounted) return;
                 
-                const tableCheck = await db.getAllAsync<{ name: string }>(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='profile'"
-                );
-                
-                if (tableCheck.length > 0) {
-                    const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
-                    if (profile && mounted) {
-                        isEditing.current = true;
-                        setForm({
-                            cedula: (profile as any).cedula,
-                            nombres: (profile as any).nombres,
-                            apellidos: (profile as any).apellidos,
-                            telefono: (profile as any).telefono,
-                            email: (profile as any).email || '',
-                            sexo: (profile as any).sexo || 'M',
-                        });
-                    }
+                const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+                if (profile && mounted) {
+                    isEditing.current = true;
+                    setForm({
+                        cedula: (profile as any).cedula,
+                        nombres: (profile as any).nombres,
+                        apellidos: (profile as any).apellidos,
+                        telefono: (profile as any).telefono,
+                        email: (profile as any).email || '',
+                        sexo: (profile as any).sexo || 'M',
+                    });
                 }
             } catch (error) {
-                console.error('Error loading profile:', error);
+                console.log('[Register] Perfil no encontrado o tabla no lista (esperado)');
             } finally {
                 if (mounted) setInitialLoading(false);
             }
@@ -114,21 +109,33 @@ export default function RegisterScreen() {
             const fullProfile = { ...form, ...deviceInfo };
 
             // 1. Save locally
-            await saveProfile(db, fullProfile);
+            try {
+                await saveProfile(db, fullProfile);
+            } catch (dbError: any) {
+                console.error('[DB Error] Failed to save profile:', dbError);
+                throw new Error(`Error local: ${dbError.message}`);
+            }
 
-            // 2. Sync to API (Fire and forget or wait?)
-            // We should use a dedicated endpoint /api/v1/registrants
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/registrants`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': process.env.EXPO_PUBLIC_API_KEY || '',
-                },
-                body: JSON.stringify(fullProfile),
-            });
+            // 2. Sync to API
+            try {
+                const { apiUrl, apiKey } = await getApiConfig();
+                const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
 
-            if (!response.ok) {
-                console.warn('[Register] API sync failed, will retry later');
+                const response = await fetch(`${base}/registrants`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey,
+                    },
+                    body: JSON.stringify(fullProfile),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.warn(`[Register] API sync failed (${response.status}):`, errorText);
+                }
+            } catch (apiError) {
+                console.warn('[Register] API sync network error, will retry later:', apiError);
             }
 
             // 3. Mark as logged in

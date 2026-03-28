@@ -1,92 +1,71 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
+  const latestVersion = 4;
+  const version = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
+  const currentVersion = version?.user_version ?? 0;
 
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      nombre TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now','localtime'))
-    );
+  if (currentVersion >= latestVersion) return;
 
-    CREATE TABLE IF NOT EXISTS personas (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT NOT NULL,
-      cedula TEXT NOT NULL,
-      edad TEXT DEFAULT '',
-      telefono TEXT NOT NULL,
-      telefono_opcional TEXT DEFAULT '',
-      email TEXT DEFAULT '',
-      direccion TEXT DEFAULT '',
-      punto_referencia TEXT DEFAULT '',
-      sector_barrio TEXT DEFAULT '',
-      fecha_nacimiento TEXT DEFAULT '',
-      genero TEXT DEFAULT 'M',
-      synced INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now','localtime')),
-      user_id INTEGER,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
+  console.log(`[DB] Inicializando/Actualizando base de datos (v${currentVersion} -> v${latestVersion})...`);
 
-    CREATE TABLE IF NOT EXISTS profile (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      cedula TEXT NOT NULL UNIQUE,
-      nombres TEXT NOT NULL,
-      apellidos TEXT NOT NULL,
-      telefono TEXT NOT NULL,
-      email TEXT DEFAULT '',
-      sexo TEXT DEFAULT 'M',
-      brand TEXT DEFAULT '',
-      model TEXT DEFAULT '',
-      os_version TEXT DEFAULT '',
-      device_id TEXT DEFAULT '',
-      synced INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now','localtime'))
-    );
-  `);
+  try {
+    await db.execAsync(`
+      PRAGMA journal_mode = 'delete';
+      PRAGMA foreign_keys = ON;
 
-  // Add new columns if upgrading from old schema
-  const columns = await db.getAllAsync<{ name: string }>(
-    "PRAGMA table_info(personas)"
-  );
-  const columnNames = columns.map(c => c.name);
- 
-  const newColumns = [
-    { name: 'edad', type: "TEXT DEFAULT ''" },
-    { name: 'telefono_opcional', type: "TEXT DEFAULT ''" },
-    { name: 'punto_referencia', type: "TEXT DEFAULT ''" },
-    { name: 'sector_barrio', type: "TEXT DEFAULT ''" },
-    { name: 'registrant_id', type: "TEXT DEFAULT ''" },
-  ];
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        nombre TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+      );
 
-  for (const col of newColumns) {
-    if (!columnNames.includes(col.name)) {
-      await db.execAsync(`ALTER TABLE personas ADD COLUMN ${col.name} ${col.type}`);
-      console.log(`[DB] Columna '${col.name}' agregada`);
-    }
-  }
+      CREATE TABLE IF NOT EXISTS personas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        cedula TEXT NOT NULL,
+        edad TEXT DEFAULT '',
+        telefono TEXT NOT NULL,
+        telefono_opcional TEXT DEFAULT '',
+        email TEXT DEFAULT '',
+        direccion TEXT DEFAULT '',
+        punto_referencia TEXT DEFAULT '',
+        sector_barrio TEXT DEFAULT '',
+        fecha_nacimiento TEXT DEFAULT '',
+        genero TEXT DEFAULT 'M',
+        synced INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        user_id INTEGER,
+        registrant_id TEXT DEFAULT '',
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
 
-  // Auto-migrate profile table
-  const profileCols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(profile)");
-  const profileColNames = profileCols.map(c => c.name);
-  if (!profileColNames.includes('synced')) {
-    await db.execAsync('ALTER TABLE profile ADD COLUMN synced INTEGER DEFAULT 0');
-    console.log('[DB] Columna "synced" agregada a la tabla profile');
-  }
+      CREATE TABLE IF NOT EXISTS profile (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cedula TEXT NOT NULL UNIQUE,
+        nombres TEXT NOT NULL,
+        apellidos TEXT NOT NULL,
+        telefono TEXT NOT NULL,
+        email TEXT DEFAULT '',
+        sexo TEXT DEFAULT 'M',
+        brand TEXT DEFAULT '',
+        model TEXT DEFAULT '',
+        os_version TEXT DEFAULT '',
+        device_id TEXT DEFAULT '',
+        synced INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime'))
+      );
 
-  // Create default admin user if none exists
-  const userCount = await db.getFirstAsync<{ count: number }>(
-    'SELECT COUNT(*) as count FROM users'
-  );
+      INSERT OR IGNORE INTO users (id, username, password, nombre) 
+      VALUES (1, 'admin', 'admin123', 'Administrador');
 
-  if (userCount && userCount.count === 0) {
-    await db.runAsync(
-      'INSERT INTO users (username, password_hash, nombre) VALUES (?, ?, ?)',
-      ['admin', 'admin123', 'Administrador']
-    );
+      PRAGMA user_version = ${latestVersion};
+    `);
+    console.log("[DB] Inicialización completada exitosamente");
+  } catch (error) {
+    console.error('[DB] CRITICAL: Falló la inicialización:', error);
+    throw error;
   }
 }

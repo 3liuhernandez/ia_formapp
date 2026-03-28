@@ -1,5 +1,5 @@
 import type { Persona } from '@/types';
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as XLSX from 'xlsx';
 
@@ -39,27 +39,19 @@ export async function exportToExcel(personas: Persona[], fileName?: string): Pro
     // Generate as base64
     const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-    // Write to cache directory using new Expo File API
+    // Write to cache directory using robust string-based API
     const date = new Date().toISOString().split('T')[0];
     const name = fileName || `ElimAPP_Registros_${date}`;
-    const file = new File(Paths.cache, `${name}.xlsx`);
+    const uri = `${FileSystem.cacheDirectory}/${name}.xlsx`;
 
-    // Convert base64 to Uint8Array and write
-    const binaryString = atob(wbout);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    const writer = file.writableStream();
-    const w = writer.getWriter();
-    await w.write(bytes);
-    await w.close();
+    await FileSystem.writeAsStringAsync(uri, wbout, {
+        encoding: FileSystem.EncodingType.Base64
+    });
 
     // Share the file
     const isAvailable = await Sharing.isAvailableAsync();
     if (isAvailable) {
-        await Sharing.shareAsync(file.uri, {
+        await Sharing.shareAsync(uri, {
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             dialogTitle: 'Exportar registros',
         });

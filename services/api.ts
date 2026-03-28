@@ -1,14 +1,5 @@
 import type { PersonaInput } from '@/types';
-
-// =============================================
-// CONFIGURA AQUÍ TU API (Desde .env)
-// =============================================
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api';
-
-// API Key para autenticación (Desde .env)
-const API_KEY = process.env.EXPO_PUBLIC_API_KEY || '';
-
-// =============================================
+import { getApiConfig } from './settings';
 
 interface ApiResponse {
     success: boolean;
@@ -21,11 +12,16 @@ async function request(
     options: RequestInit = {}
 ): Promise<ApiResponse> {
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const { apiUrl, apiKey } = await getApiConfig();
+        
+        // Remove trailing slash if present in apiUrl to avoid double slashes
+        const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+
+        const response = await fetch(`${base}${endpoint}`, {
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
-                'X-API-Key': API_KEY,
+                'X-API-Key': apiKey,
                 ...options.headers,
             },
             ...options,
@@ -72,6 +68,3 @@ export async function loginToApi(
         body: JSON.stringify({ username, password }),
     });
 }
-
-export { API_BASE_URL };
-

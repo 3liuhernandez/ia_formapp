@@ -2,17 +2,18 @@ import { getUnsyncedPersonas, markAsSynced, getUnsyncedProfile, markProfileAsSyn
 import { initializeDatabase } from '@/database/schema';
 import { sendPersonaToApi } from '@/services/api';
 import { isOnline } from '@/services/network';
+import { getApiConfig } from '@/services/settings';
 import * as SQLite from 'expo-sqlite';
 
 let isSyncing = false;
 
-async function getInitializedDb(): Promise<SQLite.SQLiteDatabase> {
-    const db = await SQLite.openDatabaseAsync('app.db');
-    await initializeDatabase(db);
+async function getBackgroundDb(): Promise<SQLite.SQLiteDatabase> {
+    const db = await SQLite.openDatabaseAsync('app_v3.db');
+    try { await initializeDatabase(db); } catch (e) {}
     return db;
 }
 
-export async function syncPendingRecords(): Promise<{
+export async function syncPendingRecords(dbParam?: SQLite.SQLiteDatabase): Promise<{
     synced: number;
     failed: number;
 }> {
@@ -22,27 +23,27 @@ export async function syncPendingRecords(): Promise<{
     }
 
     const online = await isOnline();
-    if (!online) {
-        console.log('[Sync] Sin conexión, sincronización pospuesta');
-        return { synced: 0, failed: 0 };
-    }
+    if (!online) return { synced: 0, failed: 0 };
 
     isSyncing = true;
     let syncedCount = 0;
     let failedCount = 0;
 
     try {
-        const db = await getInitializedDb();
+        const db = dbParam || await getBackgroundDb();
         // 1. Sync Profile first
         const unsyncedProfile = await getUnsyncedProfile(db);
         if (unsyncedProfile) {
             console.log(`[Sync] Sincronizando perfil de ${unsyncedProfile.cedula}...`);
             try {
-                const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/registrants`, {
+                const { apiUrl, apiKey } = await getApiConfig();
+                const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+
+                const response = await fetch(`${base}/registrants`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-API-Key': process.env.EXPO_PUBLIC_API_KEY || '',
+                        'X-API-Key': apiKey,
                     },
                     body: JSON.stringify(unsyncedProfile),
                 });
@@ -96,8 +97,11 @@ export async function syncPendingRecords(): Promise<{
         }
 
         console.log(`[Sync] Completado: ${syncedCount} sincronizados, ${failedCount} fallidos`);
-    } catch (error) {
+    } catch (error: any) {
         console.error('[Sync] Error general:', error);
+        // Add more detail for production debugging
+        const apiBase = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+        console.error(`[Sync] Configured API: ${apiBase}. Error: ${error.message}`);
     } finally {
         isSyncing = false;
     }

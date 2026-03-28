@@ -2,15 +2,16 @@ import { Button } from '@/components/Button';
 import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getSyncStats } from '@/database/operations';
+import { getSyncStats, clearProfile } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { getApiConfig, saveApiConfig, resetApiConfig, ApiConfig } from '@/services/settings';
 import type { SyncStats } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -20,6 +21,9 @@ export default function ProfileScreen() {
     const isConnected = useNetworkStatus();
     const [stats, setStats] = useState<SyncStats>({ total: 0, synced: 0, pending: 0 });
     const [profile, setProfile] = useState<any>(null);
+    const [showSettings, setShowSettings] = useState(false);
+    const [config, setConfig] = useState<ApiConfig>({ apiUrl: '', apiKey: '' });
+    const [tempConfig, setTempConfig] = useState<ApiConfig>({ apiUrl: '', apiKey: '' });
 
     useFocusEffect(useCallback(() => {
         let mounted = true;
@@ -31,6 +35,12 @@ export default function ProfileScreen() {
                 if (mounted) setStats(s);
                 const p = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
                 if (mounted) setProfile(p);
+                
+                const c = await getApiConfig();
+                if (mounted) {
+                    setConfig(c);
+                    setTempConfig(c);
+                }
             } catch (e) {
                 console.error(e);
             }
@@ -39,11 +49,58 @@ export default function ProfileScreen() {
         return () => { mounted = false; };
     }, [db]));
 
+    const handleSaveConfig = async () => {
+        try {
+            await saveApiConfig(tempConfig);
+            setConfig(tempConfig);
+            setShowSettings(false);
+            Alert.alert('Éxito', 'Configuración guardada correctamente');
+        } catch (e) {
+            Alert.alert('Error', 'No se pudo guardar la configuración');
+        }
+    };
+
+    const handleResetConfig = async () => {
+        Alert.alert('Reiniciar', '¿Volver a la configuración por defecto?', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Reiniciar', style: 'default', onPress: async () => {
+                await resetApiConfig();
+                const c = await getApiConfig();
+                setConfig(c);
+                setTempConfig(c);
+                setShowSettings(false);
+            }},
+        ]);
+    };
+
     const handleLogout = () => {
         Alert.alert('Cerrar Sesión', '¿Estás seguro?', [
             { text: 'Cancelar', style: 'cancel' },
             { text: 'Cerrar Sesión', style: 'destructive', onPress: async () => { await logout(); router.replace('/login'); } },
         ]);
+    };
+
+    const handleResetProfile = () => {
+        Alert.alert(
+            'Eliminar Perfil Local',
+            'Esto borrará tu información de este dispositivo (nombres, cédula, etc). Deberás registrarte de nuevo. ¿Continuar?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                { 
+                    text: 'Confirmar Eliminación', 
+                    style: 'destructive', 
+                    onPress: async () => {
+                        try {
+                            await clearProfile(db);
+                            await logout();
+                            router.replace('/register');
+                        } catch (e) {
+                            Alert.alert('Error', 'No se pudo eliminar el perfil');
+                        }
+                    } 
+                },
+            ]
+        );
     };
 
     const syncPercentage = stats.total > 0 ? Math.round((stats.synced / stats.total) * 100) : 0;
@@ -124,8 +181,114 @@ export default function ProfileScreen() {
                 </View>
             </View>
 
-            <Button title="Cerrar Sesión" onPress={handleLogout} variant="danger" style={styles.logoutButton}
-                icon={<Ionicons name="log-out-outline" size={20} color={Colors.white} />} />
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Configuración de Sistema</Text>
+                <View style={styles.statsCard}>
+                    <TouchableOpacity 
+                        style={styles.settingsItem}
+                        onPress={() => setShowSettings(true)}
+                    >
+                        <View style={styles.settingsIcon}>
+                            <Ionicons name="settings-outline" size={20} color={Colors.primary} />
+                        </View>
+                        <View style={styles.settingsContent}>
+                            <Text style={styles.settingsLabel}>Conexión con la API</Text>
+                            <Text style={styles.settingsValue} numberOfLines={1}>{config.apiUrl}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Acciones de Cuenta</Text>
+                <View style={styles.statsCard}>
+                    <TouchableOpacity 
+                        style={styles.settingsItem}
+                        onPress={handleLogout}
+                    >
+                        <View style={[styles.settingsIcon, { backgroundColor: 'rgba(231, 76, 60, 0.1)' }]}>
+                            <Ionicons name="log-out-outline" size={20} color={Colors.error} />
+                        </View>
+                        <View style={styles.settingsContent}>
+                            <Text style={[styles.settingsLabel, { color: Colors.error }]}>Cerrar Sesión</Text>
+                            <Text style={styles.settingsValue}>Salir de la cuenta actual</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.divider} />
+
+                    <TouchableOpacity 
+                        style={styles.settingsItem}
+                        onPress={handleResetProfile}
+                    >
+                        <View style={[styles.settingsIcon, { backgroundColor: 'rgba(231, 76, 60, 0.1)' }]}>
+                            <Ionicons name="trash-outline" size={20} color={Colors.error} />
+                        </View>
+                        <View style={styles.settingsContent}>
+                            <Text style={[styles.settingsLabel, { color: Colors.error }]}>Borrar Perfil Local</Text>
+                            <Text style={styles.settingsValue}>Elimina tus datos de este equipo</Text>
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* Settings Modal */}
+            <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
+                <View style={[styles.modalOverlay, { justifyContent: 'center', padding: Spacing.lg }]}>
+                    <View style={[styles.modalContent, { borderRadius: BorderRadius.xl, maxHeight: 'auto' }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Configuración de API</Text>
+                            <TouchableOpacity onPress={() => setShowSettings(false)}>
+                                <Ionicons name="close-circle" size={28} color={Colors.textMuted} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.modalGoldLine} />
+                        
+                        <Text style={styles.settingsHint}>Establece la dirección del servidor y tu clave de API si es diferente a la configurada por defecto.</Text>
+                        
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>URL de la API</Text>
+                            <TextInput 
+                                style={styles.textInput}
+                                value={tempConfig.apiUrl}
+                                onChangeText={(v) => setTempConfig({...tempConfig, apiUrl: v})}
+                                placeholder="http://192.168.1.x:3001/api/v1"
+                                placeholderTextColor={Colors.textMuted}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                        </View>
+                        
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.inputLabel}>API Key (X-API-Key)</Text>
+                            <TextInput 
+                                style={styles.textInput}
+                                value={tempConfig.apiKey}
+                                onChangeText={(v) => setTempConfig({...tempConfig, apiKey: v})}
+                                placeholder="Ingresa la clave de seguridad"
+                                placeholderTextColor={Colors.textMuted}
+                                autoCapitalize="none"
+                            />
+                        </View>
+
+                        <View style={styles.settingsActions}>
+                            <Button 
+                                title="Reiniciar" 
+                                onPress={handleResetConfig}
+                                variant="outline" 
+                                style={{ flex: 1 }}
+                            />
+                            <Button 
+                                title="Guardar Cambios" 
+                                onPress={handleSaveConfig}
+                                style={{ flex: 2 }}
+                                icon={<Ionicons name="save-outline" size={18} color={Colors.white} />}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* App Version */}
             <View style={styles.versionContainer}>
@@ -211,4 +374,23 @@ const styles = StyleSheet.create({
     appFullName: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs },
     versionGoldLine: { width: 30, height: 2, backgroundColor: Colors.gold, borderRadius: 1, marginVertical: Spacing.sm },
     versionText: { color: Colors.textMuted, fontSize: FontSize.xs },
+    // Modal & Settings styles
+    modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+    modalContent: {
+        backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl,
+        padding: Spacing.lg, maxHeight: '90%'
+    },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    modalTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.primary },
+    modalGoldLine: { width: 50, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginTop: Spacing.sm, marginBottom: Spacing.lg },
+    settingsItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm },
+    settingsIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
+    settingsContent: { flex: 1 },
+    settingsLabel: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600' },
+    settingsValue: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
+    settingsHint: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.lg, lineHeight: 20 },
+    inputGroup: { marginBottom: Spacing.md },
+    inputLabel: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: '600', marginBottom: Spacing.xs },
+    textInput: { backgroundColor: Colors.inputBg, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.inputBorder, padding: Spacing.md, color: Colors.text, fontSize: FontSize.md },
+    settingsActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
 });

@@ -22,8 +22,8 @@ function CustomTopHeader() {
     <SafeAreaView edges={['top']} style={styles.topBarContainer}>
       <View style={styles.headerRow}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoIcon}>
-            <Ionicons name="shield-checkmark" size={22} color={Colors.white} />
+          <View style={styles.logoCircle}>
+            <Ionicons name="people-circle" size={24} color={Colors.white} />
           </View>
           <Text style={styles.appName}>Elim<Text style={{ color: Colors.gold }}>APP</Text></Text>
         </View>
@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  logoIcon: {
+  logoCircle: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',

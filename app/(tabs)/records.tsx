@@ -70,10 +70,12 @@ export default function RecordsScreen() {
         if (!isConnected) { Alert.alert('Sin conexión', 'Necesitas internet para sincronizar'); return; }
         setSyncing(true);
         try {
-            const result = await syncPendingRecords();
+            const result = await syncPendingRecords(db);
             await loadData();
             Alert.alert('Sincronización', `Enviados: ${result.synced}\nFallidos: ${result.failed}`);
-        } catch { Alert.alert('Error', 'Error durante la sincronización'); }
+        } catch (err: any) { 
+            Alert.alert('Error', `Error durante la sincronización: ${err.message || 'Verifica la conexión con el servidor'}`); 
+        }
         finally { setSyncing(false); }
     };
 

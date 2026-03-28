@@ -4,7 +4,6 @@ import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { insertPersona } from '@/database/operations';
-import { initializeDatabase } from '@/database/schema';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { syncPendingRecords } from '@/services/sync';
 import type { PersonaInput } from '@/types';
@@ -19,10 +18,7 @@ import {
 
 const GENERO_OPTIONS = ['Hombre', 'Mujer'] as const;
 
-async function getDb(contextDb: SQLite.SQLiteDatabase): Promise<SQLite.SQLiteDatabase> {
-    try { await contextDb.getFirstAsync('SELECT 1'); return contextDb; }
-    catch { const db = await SQLite.openDatabaseAsync('app.db'); await initializeDatabase(db); return db; }
-}
+// Removed separate getDb helper to avoid bypassing initialization
 
 const EMPTY_FORM: PersonaInput = {
     nombre: '', cedula: '', edad: '', telefono: '', telefono_opcional: '',
@@ -60,19 +56,18 @@ export default function FormScreen() {
         if (!validate()) return;
         setLoading(true);
         try {
-            const db = await getDb(contextDb);
-            await insertPersona(db, { ...form, registrant_id: user?.cedula || '' }, user?.id ?? 1);
+            await insertPersona(contextDb, { ...form, registrant_id: user?.cedula || '' }, user?.id ?? 1);
             setForm({ ...EMPTY_FORM });
             if (isConnected) {
                 setModalMessage('Registro guardado exitosamente'); setModalIsOffline(false);
-                syncPendingRecords().catch(console.error);
+                syncPendingRecords(contextDb).catch(console.error);
             } else {
                 setModalMessage('Registro guardado localmente.\nSe sincronizará cuando haya internet.'); setModalIsOffline(true);
             }
             setShowModal(true);
-        } catch (err) {
-            Alert.alert('Error', 'No se pudo guardar el registro.');
-            console.error(err);
+        } catch (err: any) {
+            Alert.alert('Error al guardar', `No se pudo guardar el registro localmente: ${err.message}`);
+            console.error('[Form Submit Error]:', err);
         } finally { setLoading(false); }
     };
 

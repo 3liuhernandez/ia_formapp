@@ -62,7 +62,7 @@ export default function LoginScreen() {
                 {/* Logo / Header */}
                 <View style={styles.header}>
                     <View style={styles.logoContainer}>
-                        <Ionicons name="people-circle" size={80} color={Colors.primary} />
+                        <Ionicons name="people-circle" size={80} color={Colors.white} />
                     </View>
                     <Text style={styles.title}>ElimAPP</Text>
                     <View style={styles.goldLine} />
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.primary,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: Spacing.lg,
