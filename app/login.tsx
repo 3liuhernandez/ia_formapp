@@ -10,11 +10,15 @@ import React, { useState } from 'react';
 import {
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     View,
 } from 'react-native';
+import Constants from 'expo-constants';
+import { DebugOverlay } from '@/components/DebugOverlay';
+import { logger } from '@/services/logger';
 
 export default function LoginScreen() {
     const db = useSQLiteContext();
@@ -23,6 +27,19 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    
+    // Debug state
+    const [debugVisible, setDebugVisible] = useState(false);
+    const [tapCount, setTapCount] = useState(0);
+
+    const handleLogoPress = () => {
+        const newCount = tapCount + 1;
+        setTapCount(newCount);
+        if (newCount >= 5) {
+            setDebugVisible(true);
+            setTapCount(0);
+        }
+    };
 
     const handleLogin = async () => {
         if (!username.trim() || !password.trim()) {
@@ -61,9 +78,9 @@ export default function LoginScreen() {
             >
                 {/* Logo / Header */}
                 <View style={styles.header}>
-                    <View style={styles.logoContainer}>
+                    <Pressable onPress={handleLogoPress} style={styles.logoContainer}>
                         <Ionicons name="people-circle" size={80} color={Colors.white} />
-                    </View>
+                    </Pressable>
                     <Text style={styles.title}>ElimAPP</Text>
                     <View style={styles.goldLine} />
                     <Text style={styles.subtitle}>Iglesia de la Cruz</Text>
@@ -109,6 +126,17 @@ export default function LoginScreen() {
                         Usuario por defecto: admin / admin123
                     </Text>
                 </View>
+
+                <View style={styles.footer}>
+                    <Text style={styles.versionText}>
+                        v{Constants.expoConfig?.version || '1.0.0'} (Build {Constants.expoConfig?.android?.versionCode || '1'})
+                    </Text>
+                </View>
+
+                <DebugOverlay 
+                    visible={debugVisible} 
+                    onClose={() => setDebugVisible(false)} 
+                />
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -197,5 +225,15 @@ const styles = StyleSheet.create({
         fontSize: FontSize.xs,
         textAlign: 'center',
         marginTop: Spacing.md,
+    },
+    footer: {
+        marginTop: Spacing.xl,
+        paddingBottom: Spacing.lg,
+        alignItems: 'center',
+    },
+    versionText: {
+        color: Colors.textMuted,
+        fontSize: 10,
+        opacity: 0.6,
     },
 });

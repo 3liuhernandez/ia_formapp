@@ -25,31 +25,8 @@ function LoadingScreen() {
 }
 
 function RootNavigation() {
-  const { user, isLoading } = useAuth();
+  const { user, hasProfile, isLoading } = useAuth();
   const db = useSQLiteContext();
-  const [hasProfile, setHasProfile] = React.useState<boolean | null>(null);
-
-  React.useEffect(() => {
-    let mounted = true;
-
-    async function checkProfile() {
-      if (!db || !mounted) return;
-      console.log('[Layout] Verificando perfil...');
-      
-      try {
-        const profile = await db.getFirstAsync('SELECT id FROM profile LIMIT 1');
-        console.log('[Layout] Perfil encontrado:', profile ? 'SÍ' : 'NO');
-        if (mounted) setHasProfile(!!profile);
-      } catch (e) {
-        // Si la tabla no existe, fallará. Esto es normal en el primer inicio.
-        console.log('[Layout] Tabla profile no existe o error (primer inicio)');
-        if (mounted) setHasProfile(false);
-      }
-    }
-    
-    checkProfile();
-    return () => { mounted = false; };
-  }, [db]);
 
   // Auto-sync when connection is restored, using context DB
   React.useEffect(() => {

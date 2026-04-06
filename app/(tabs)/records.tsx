@@ -2,6 +2,7 @@ import { Button } from '@/components/Button';
 import { RecordCard } from '@/components/RecordCard';
 import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import {
     deletePersona,
     getAllPersonas,
@@ -9,6 +10,7 @@ import {
     getSyncStats, searchPersonas,
 } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { fetchPersonasLog } from '@/services/api';
 import { exportToExcel } from '@/services/export';
 import { syncPendingRecords } from '@/services/sync';
 import type { Persona, SyncStats } from '@/types';
@@ -31,6 +33,7 @@ import {
 
 export default function RecordsScreen() {
     const db = useSQLiteContext();
+    const { user } = useAuth();
     const isConnected = useNetworkStatus();
     const [personas, setPersonas] = useState<Persona[]>([]);
     const [stats, setStats] = useState<SyncStats>({ total: 0, synced: 0, pending: 0 });
@@ -82,17 +85,59 @@ export default function RecordsScreen() {
     const handleExport = async () => {
         setExporting(true);
         try {
-            let data: Persona[];
+            let localData: Persona[] = [];
+            let serverData: Persona[] = [];
+            let from = '', to = '';
+
             if (exportFrom && exportTo) {
                 // Convert DD/MM/YYYY to YYYY-MM-DD for SQLite
                 const fromParts = exportFrom.split('/');
                 const toParts = exportTo.split('/');
-                const from = fromParts.length === 3 ? `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}` : exportFrom;
-                const to = toParts.length === 3 ? `${toParts[2]}-${toParts[1]}-${toParts[0]}` : exportTo;
-                data = await getPersonasByDateRange(db, from, to);
+                from = fromParts.length === 3 ? `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}` : exportFrom;
+                to = toParts.length === 3 ? `${toParts[2]}-${toParts[1]}-${toParts[0]}` : exportTo;
+                localData = await getPersonasByDateRange(db, from, to);
             } else {
-                data = await getAllPersonas(db);
+                localData = await getAllPersonas(db);
             }
+
+            if (isConnected) {
+                try {
+                    const apiResponse = await fetchPersonasLog(from, to);
+                    if (apiResponse.success && Array.isArray(apiResponse.data)) {
+                        serverData = apiResponse.data;
+                    }
+                } catch (e) {
+                    console.warn('[Export] Could not fetch API records', e);
+                }
+            }
+
+            // Deduplication logic
+            const mergedMap = new Map<string, Persona>();
+
+            const processRecord = (p: Persona) => {
+                // User requested key: Person Cedula + Registrant Cedula
+                // If person has no cedula: Normalized Name + Registrant Cedula
+                const registrantId = p.registrant_id || user?.cedula || 'UNKNOWN';
+                let key = '';
+                
+                if (p.cedula && p.cedula.trim()) {
+                    key = `ID_${p.cedula.trim()}_REG_${registrantId}`;
+                } else {
+                    const normalizedName = p.nombre ? p.nombre.toLowerCase().replace(/\s+/g, '') : 'NONAME';
+                    key = `NAME_${normalizedName}_REG_${registrantId}`;
+                }
+                
+                // Keep the first one we see (server data prioritized as it's processed first)
+                if (!mergedMap.has(key)) {
+                    mergedMap.set(key, p);
+                }
+            };
+
+            // Prefer server data over local
+            serverData.forEach(processRecord);
+            localData.forEach(processRecord);
+
+            const data = Array.from(mergedMap.values());
 
             if (data.length === 0) {
                 Alert.alert('Sin datos', 'No hay registros para exportar en ese rango de fechas');

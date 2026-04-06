@@ -22,7 +22,6 @@ export async function exportToExcel(personas: Persona[], fileName?: string): Pro
         'Sector / Barrio': p.sector_barrio,
         'Fecha de Nacimiento': p.fecha_nacimiento,
         'Género': p.genero === 'M' ? 'Hombre' : 'Mujer',
-        'Estado': p.synced === 1 ? 'Sincronizado' : 'Pendiente',
         'Fecha de Registro': p.created_at,
     }));
 

@@ -21,13 +21,14 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Constants from 'expo-constants';
 
 const GENERO_OPTIONS = ['Hombre', 'Mujer'] as const;
 
 export default function RegisterScreen() {
     const db = useSQLiteContext();
     const router = useRouter();
-    const { login } = useAuth();
+    const { login, setHasProfile } = useAuth();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [form, setForm] = useState({
@@ -138,7 +139,8 @@ export default function RegisterScreen() {
                 console.warn('[Register] API sync network error, will retry later:', apiError);
             }
 
-            // 3. Mark as logged in
+            // 3. Mark as logged in and profile as existing
+            setHasProfile(true);
             await login({
                 id: 1, // Mock local ID
                 username: form.cedula,
@@ -263,6 +265,12 @@ export default function RegisterScreen() {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                <View style={styles.footer}>
+                    <Text style={styles.versionText}>
+                        v{Constants.expoConfig?.version || '1.0.0'} (Build {Constants.expoConfig?.android?.versionCode || '1'})
+                    </Text>
+                </View>
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -298,5 +306,15 @@ const styles = StyleSheet.create({
     genderTextActive: { color: Colors.white },
     btn: { marginTop: Spacing.md },
     cancelLink: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.sm },
-    cancelText: { color: Colors.textMuted, fontSize: FontSize.md, fontWeight: '600' }
+    cancelText: { color: Colors.textMuted, fontSize: FontSize.md, fontWeight: '600' },
+    footer: {
+        marginTop: Spacing.xl,
+        paddingBottom: Spacing.xl,
+        alignItems: 'center',
+    },
+    versionText: {
+        color: Colors.textMuted,
+        fontSize: 10,
+        opacity: 0.6,
+    },
 });

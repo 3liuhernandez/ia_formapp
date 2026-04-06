@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-formapp.admin-3548.nextstepinternacional.com/api/v1",
         "EXPO_PUBLIC_API_KEY": "elimapp_prod_7b2e9d1c5a3f8b1e6d4c9a8f2a0b1d3e"
@@ -14,6 +17,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-formapp.admin-3548.nextstepinternacional.com/api/v1",
         "EXPO_PUBLIC_API_KEY": "elimapp_prod_7b2e9d1c5a3f8b1e6d4c9a8f2a0b1d3e"

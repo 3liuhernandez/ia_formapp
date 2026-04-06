@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
-  const latestVersion = 4;
+  const latestVersion = 5;
   const version = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
   const currentVersion = version?.user_version ?? 0;
 
@@ -17,7 +17,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
         nombre TEXT NOT NULL,
         created_at TEXT DEFAULT (datetime('now','localtime'))
       );
@@ -58,7 +58,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
         created_at TEXT DEFAULT (datetime('now','localtime'))
       );
 
-      INSERT OR IGNORE INTO users (id, username, password, nombre) 
+      INSERT OR IGNORE INTO users (id, username, password_hash, nombre) 
       VALUES (1, 'admin', 'admin123', 'Administrador');
 
       PRAGMA user_version = ${latestVersion};

@@ -17,7 +17,7 @@ const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
 export default function ProfileScreen() {
     const db = useSQLiteContext();
-    const { user, logout } = useAuth();
+    const { user, logout, setHasProfile } = useAuth();
     const isConnected = useNetworkStatus();
     const [stats, setStats] = useState<SyncStats>({ total: 0, synced: 0, pending: 0 });
     const [profile, setProfile] = useState<any>(null);
@@ -92,6 +92,7 @@ export default function ProfileScreen() {
                     onPress: async () => {
                         try {
                             await clearProfile(db);
+                            setHasProfile(false);
                             await logout();
                             router.replace('/register');
                         } catch (e) {

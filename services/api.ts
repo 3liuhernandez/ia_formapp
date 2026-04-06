@@ -59,6 +59,17 @@ export async function sendBatchPersonas(personas: PersonaInput[]): Promise<ApiRe
     });
 }
 
+export async function fetchPersonasLog(from?: string, to?: string): Promise<ApiResponse> {
+    const params = new URLSearchParams();
+    params.append('limit', '10000'); // Export allows up to 10k items
+    if (from) params.append('start_date', from);
+    if (to) params.append('end_date', to);
+    
+    return request(`/personas?${params.toString()}`, {
+        method: 'GET',
+    });
+}
+
 export async function loginToApi(
     username: string,
     password: string

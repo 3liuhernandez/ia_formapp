@@ -1,37 +1,58 @@
 import type { User } from '@/types';
 import * as SecureStore from 'expo-secure-store';
+import { useSQLiteContext } from 'expo-sqlite';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
     user: User | null;
+    hasProfile: boolean | null;
     isLoading: boolean;
     login: (user: User) => Promise<void>;
     logout: () => Promise<void>;
+    setHasProfile: (has: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
+    hasProfile: null,
     isLoading: true,
     login: async () => { },
     logout: async () => { },
+    setHasProfile: () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const db = useSQLiteContext();
     const [user, setUser] = useState<User | null>(null);
+    const [hasProfile, setHasProfileState] = useState<boolean | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadUser();
-    }, []);
+        loadInitialState();
+    }, [db]);
 
-    const loadUser = async () => {
+    const loadInitialState = async () => {
         try {
+            // 1. Verificamos perfil
+            let profileExists = false;
+            try {
+                if (db) {
+                    const rs = await db.getFirstAsync('SELECT id FROM profile LIMIT 1');
+                    profileExists = !!rs;
+                }
+            } catch (e) {
+                // Table might not exist on first run
+                profileExists = false;
+            }
+            setHasProfileState(profileExists);
+
+            // 2. Cargamos usuario
             const userData = await SecureStore.getItemAsync('user');
             if (userData) {
                 setUser(JSON.parse(userData));
             }
         } catch (error) {
-            console.error('Error loading user:', error);
+            console.error('Error loading initial auth state:', error);
         } finally {
             setIsLoading(false);
         }
@@ -47,8 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
+    const setHasProfile = (has: boolean) => {
+        setHasProfileState(has);
+    };
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+        <AuthContext.Provider value={{ user, hasProfile, isLoading, login, logout, setHasProfile }}>
             {children}
         </AuthContext.Provider>
     );
