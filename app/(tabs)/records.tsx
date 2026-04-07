@@ -167,9 +167,11 @@ export default function RecordsScreen() {
                     <Button title="Sincronizar" onPress={handleSync} variant="outline" loading={syncing}
                         style={styles.actionBtn} icon={<Ionicons name="sync" size={16} color={Colors.primary} />} />
                 )}
-                <Button title="Exportar Excel" onPress={() => setShowExportModal(true)} variant="secondary"
-                    style={styles.actionBtn}
-                    icon={<Ionicons name="download-outline" size={16} color={Colors.text} />} />
+                {(user?.role === 2 || user?.role === 3) && (
+                    <Button title="Exportar Excel" onPress={() => setShowExportModal(true)} variant="secondary"
+                        style={styles.actionBtn}
+                        icon={<Ionicons name="download-outline" size={16} color={Colors.text} />} />
+                )}
             </View>
 
             <View style={styles.searchContainer}>
