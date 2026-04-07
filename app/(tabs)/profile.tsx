@@ -15,6 +15,12 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
+const ROLE_NAMES: Record<number, string> = {
+    1: 'Servidor',
+    2: 'Coordinador',
+    3: 'Administrador',
+};
+
 export default function ProfileScreen() {
     const db = useSQLiteContext();
     const { user, logout, setHasProfile } = useAuth();
@@ -119,6 +125,13 @@ export default function ProfileScreen() {
                 </View>
                 <Text style={styles.userName}>{profile ? `${profile.nombres} ${profile.apellidos}` : (user?.nombre || 'Usuario')}</Text>
                 <Text style={styles.userUsername}>{profile?.email || '-'}</Text>
+                
+                {user?.role && (
+                    <View style={styles.roleBadge}>
+                        <Ionicons name="shield-checkmark" size={14} color={Colors.white} />
+                        <Text style={styles.roleBadgeText}>{ROLE_NAMES[user.role] || 'Usuario'}</Text>
+                    </View>
+                )}
 
                 {profile && (
                     <TouchableOpacity
@@ -346,6 +359,12 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.cardBorder,
     },
     editBadgeText: { color: Colors.primary, fontSize: FontSize.xs, fontWeight: '600' },
+    roleBadge: {
+        flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm,
+        paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full,
+        backgroundColor: Colors.primary,
+    },
+    roleBadgeText: { color: Colors.white, fontSize: FontSize.xs, fontWeight: 'bold', textTransform: 'uppercase' },
     section: { marginBottom: Spacing.lg },
     sectionTitle: { color: Colors.wine, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.md },
     statsCard: {

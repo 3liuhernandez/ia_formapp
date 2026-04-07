@@ -36,6 +36,7 @@ export interface User {
     username: string;
     nombre: string;
     cedula: string;
+    role?: number; // 1: servidor, 2: coordinador, 3: admin
 }
 
 export interface SyncStats {

@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
-  const latestVersion = 5;
+  const latestVersion = 6;
   const version = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
   const currentVersion = version?.user_version ?? 0;
 
@@ -19,6 +19,7 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
         username TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
         nombre TEXT NOT NULL,
+        role INTEGER DEFAULT 1,
         created_at TEXT DEFAULT (datetime('now','localtime'))
       );
 
@@ -58,11 +59,24 @@ export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
         created_at TEXT DEFAULT (datetime('now','localtime'))
       );
 
-      INSERT OR IGNORE INTO users (id, username, password_hash, nombre) 
-      VALUES (1, 'admin', 'admin123', 'Administrador');
+      INSERT OR IGNORE INTO users (id, username, password_hash, nombre, role) 
+      VALUES (1, 'admin', 'admin123', 'Administrador', 1);
 
       PRAGMA user_version = ${latestVersion};
     `);
+
+    // Migraciones manuales para tablas existentes
+    try {
+      const usersInfo = await db.getAllAsync<{ name: string }>("PRAGMA table_info(users)");
+      if (!usersInfo.some(c => c.name === 'role')) {
+        await db.execAsync("ALTER TABLE users ADD COLUMN role INTEGER DEFAULT 1;");
+        await db.execAsync("UPDATE users SET role = 1 WHERE username = 'admin';");
+        console.log("[DB] Columna 'role' añadida a users");
+      }
+    } catch (e) {
+      console.error("[DB] Error migrando tabla users:", e);
+    }
+
     console.log("[DB] Inicialización completada exitosamente");
   } catch (error) {
     console.error('[DB] CRITICAL: Falló la inicialización:', error);

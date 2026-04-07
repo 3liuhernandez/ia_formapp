@@ -145,7 +145,8 @@ export default function RegisterScreen() {
                 id: 1, // Mock local ID
                 username: form.cedula,
                 cedula: form.cedula,
-                nombre: `${form.nombres} ${form.apellidos}`
+                nombre: `${form.nombres} ${form.apellidos}`,
+                role: 1
             });
 
             Alert.alert('¡Éxito!', isEditing.current ? 'Perfil actualizado.' : 'Perfil configurado correctamente.');

@@ -119,12 +119,12 @@ export async function authenticateUser(
         [username, password]
     );
     if (!user) return null;
-    return { id: user.id, username: user.username, nombre: user.nombre, cedula: user.cedula || '' };
+    return { id: user.id, username: user.username, nombre: user.nombre, cedula: user.cedula || '', role: user.role };
 }
 
 export async function getUserById(db: SQLiteDatabase, id: number): Promise<User | null> {
     return await db.getFirstAsync<User>(
-        'SELECT id, username, nombre, cedula FROM users WHERE id = ?',
+        'SELECT id, username, nombre, cedula, role FROM users WHERE id = ?',
         [id]
     );
 }
