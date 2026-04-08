@@ -5,21 +5,22 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 // PERSONAS OPERATIONS
 // ========================
 
-export async function insertPersona(
+export async function insertPeople(
     db: SQLiteDatabase,
     persona: PersonaInput,
     userId: number
 ): Promise<number> {
+
     // Reparación de emergencia en caso de que falte la columna por migración fallida
-    try {
-        const info = await db.getAllAsync<{ name: string }>("PRAGMA table_info(personas)");
+    /* try {
+        const info = await db.getAllAsync<{ name: string }>("PRAGMA table_info(people)");
         if (!info.some(c => c.name === 'registrant_id')) {
-            await db.execAsync("ALTER TABLE personas ADD COLUMN registrant_id TEXT DEFAULT ''");
+            await db.execAsync("ALTER TABLE people ADD COLUMN registrant_id TEXT DEFAULT ''");
             console.log("[DB] Columna 'registrant_id' reparada exitosamente");
         }
-    } catch (e) { console.error("[DB] Error verificando esquema:", e); }
+    } catch (e) { console.error("[DB] Error verificando esquema:", e); } */
 
-    const sql = "INSERT INTO personas (nombre, cedula, edad, telefono, telefono_opcional, email, direccion, punto_referencia, sector_barrio, fecha_nacimiento, genero, synced, user_id, registrant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const sql = "INSERT INTO people (nombre, cedula, edad, telefono, telefono_opcional, email, direccion, punto_referencia, sector_barrio, fecha_nacimiento, genero, synced, user_id, registrant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     const params = [
         persona.nombre || '',
         persona.cedula || '',
@@ -44,8 +45,21 @@ export async function insertPersona(
 
 export async function getAllPersonas(db: SQLiteDatabase): Promise<Persona[]> {
     return await db.getAllAsync<Persona>(
-        'SELECT * FROM personas ORDER BY created_at DESC'
+        'SELECT * FROM people ORDER BY created_at DESC'
     );
+}
+
+export async function getPersonasForUser(
+    db: SQLiteDatabase,
+    userId: number,
+    onlyLast24h: boolean = false
+): Promise<Persona[]> {
+    let sql = 'SELECT * FROM people WHERE user_id = ?';
+    if (onlyLast24h) {
+        sql += " AND created_at >= datetime('now', 'localtime', '-24 hours')";
+    }
+    sql += ' ORDER BY created_at DESC';
+    return await db.getAllAsync<Persona>(sql, [userId]);
 }
 
 export async function getPersonasByDateRange(
@@ -54,7 +68,7 @@ export async function getPersonasByDateRange(
     toDate: string
 ): Promise<Persona[]> {
     return await db.getAllAsync<Persona>(
-        `SELECT * FROM personas
+        `SELECT * FROM people
      WHERE date(created_at) >= date(?) AND date(created_at) <= date(?)
      ORDER BY created_at DESC`,
         [fromDate, toDate]
@@ -63,31 +77,53 @@ export async function getPersonasByDateRange(
 
 export async function getUnsyncedPersonas(db: SQLiteDatabase): Promise<Persona[]> {
     return await db.getAllAsync<Persona>(
-        'SELECT * FROM personas WHERE synced = 0 ORDER BY created_at ASC'
+        'SELECT * FROM people WHERE synced = 0 ORDER BY created_at ASC'
     );
 }
 
 export async function markAsSynced(db: SQLiteDatabase, id: number): Promise<void> {
-    await db.runAsync('UPDATE personas SET synced = 1 WHERE id = ?', [id]);
+    await db.runAsync('UPDATE people SET synced = 1 WHERE id = ?', [id]);
 }
 
 export async function markMultipleAsSynced(db: SQLiteDatabase, ids: number[]): Promise<void> {
     if (ids.length === 0) return;
     const placeholders = ids.map(() => '?').join(',');
     await db.runAsync(
-        `UPDATE personas SET synced = 1 WHERE id IN (${placeholders})`,
+        `UPDATE people SET synced = 1 WHERE id IN (${placeholders})`,
         ids
     );
 }
 
 export async function deletePersona(db: SQLiteDatabase, id: number): Promise<void> {
-    await db.runAsync('DELETE FROM personas WHERE id = ?', [id]);
+    await db.runAsync('DELETE FROM people WHERE id = ?', [id]);
 }
 
-export async function getSyncStats(db: SQLiteDatabase): Promise<SyncStats> {
-    const total = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM personas');
-    const synced = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM personas WHERE synced = 1');
-    const pending = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM personas WHERE synced = 0');
+export async function getSyncStats(
+    db: SQLiteDatabase,
+    userId?: number,
+    onlyLast24h: boolean = false
+): Promise<SyncStats> {
+    let whereClause = '';
+    const params: any[] = [];
+
+    if (userId) {
+        whereClause = ' WHERE user_id = ?';
+        params.push(userId);
+    }
+
+    if (onlyLast24h) {
+        whereClause += whereClause ? ' AND ' : ' WHERE ';
+        whereClause += "created_at >= datetime('now', 'localtime', '-24 hours')";
+    }
+
+    const totalSql = `SELECT COUNT(*) as count FROM people${whereClause}`;
+    const syncedSql = `SELECT COUNT(*) as count FROM people${whereClause}${whereClause ? ' AND ' : ' WHERE '}synced = 1`;
+    const pendingSql = `SELECT COUNT(*) as count FROM people${whereClause}${whereClause ? ' AND ' : ' WHERE '}synced = 0`;
+
+    const total = await db.getFirstAsync<{ count: number }>(totalSql, params);
+    const synced = await db.getFirstAsync<{ count: number }>(syncedSql, params);
+    const pending = await db.getFirstAsync<{ count: number }>(pendingSql, params);
+
     return {
         total: total?.count ?? 0,
         synced: synced?.count ?? 0,
@@ -98,7 +134,7 @@ export async function getSyncStats(db: SQLiteDatabase): Promise<SyncStats> {
 export async function searchPersonas(db: SQLiteDatabase, query: string): Promise<Persona[]> {
     const searchTerm = `%${query}%`;
     return await db.getAllAsync<Persona>(
-        `SELECT * FROM personas
+        `SELECT * FROM people
      WHERE nombre LIKE ? OR cedula LIKE ? OR telefono LIKE ? OR email LIKE ? OR sector_barrio LIKE ?
      ORDER BY created_at DESC`,
         [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm]
@@ -114,17 +150,34 @@ export async function authenticateUser(
     username: string,
     password: string
 ): Promise<User | null> {
-    const user = await db.getFirstAsync<User & { password_hash: string }>(
-        'SELECT * FROM users WHERE username = ? AND password_hash = ?',
-        [username, password]
-    );
-    if (!user) return null;
-    return { id: user.id, username: user.username, nombre: user.nombre, cedula: user.cedula || '', role: user.role };
+    console.log(`[DB] Intentando autenticar usuario: ${username}`);
+    try {
+        const user = await db.getFirstAsync<User & { password: string }>(
+            'SELECT * FROM users WHERE username = ?',
+            [username]
+        );
+
+        if (!user) {
+            console.log('[DB] Usuario no encontrado localmente');
+            return null;
+        }
+
+        if (user.password !== password) {
+            console.log('[DB] Contraseña incorrecta para el usuario:', username);
+            return null;
+        }
+
+        console.log('[DB] Autenticación local exitosa para:', username);
+        return { id: user.id, username: user.username, nombre: user.nombre, role: user.role };
+    } catch (e) {
+        console.error('[DB] Error en authenticateUser:', e);
+        return null;
+    }
 }
 
 export async function getUserById(db: SQLiteDatabase, id: number): Promise<User | null> {
     return await db.getFirstAsync<User>(
-        'SELECT id, username, nombre, cedula, role FROM users WHERE id = ?',
+        'SELECT id, username, nombre, role FROM users WHERE id = ?',
         [id]
     );
 }
@@ -134,12 +187,16 @@ export async function updateUserPassword(
     userId: number,
     newPassword: string
 ): Promise<void> {
-    await db.runAsync('UPDATE users SET password_hash = ? WHERE id = ?', [newPassword, userId]);
+    await db.runAsync('UPDATE users SET password = ? WHERE id = ?', [newPassword, userId]);
 }
 
 // ========================
 // PROFILE OPERATIONS
 // ========================
+
+export async function getProfile(db: SQLiteDatabase): Promise<any> {
+    return await db.getFirstAsync<any>('SELECT * FROM profile LIMIT 1');
+}
 
 export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<void> {
     await db.runAsync(
@@ -161,9 +218,6 @@ export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<voi
     );
 }
 
-export async function getProfile(db: SQLiteDatabase): Promise<any | null> {
-    return await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
-}
 
 export async function getUnsyncedProfile(db: SQLiteDatabase): Promise<any | null> {
     return await db.getFirstAsync('SELECT * FROM profile WHERE synced = 0 LIMIT 1');

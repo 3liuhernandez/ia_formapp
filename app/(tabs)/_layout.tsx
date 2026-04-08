@@ -1,6 +1,6 @@
 // import { SyncBadge } from '@/components/SyncBadge';
 import { Colors, Spacing } from '@/constants/theme';
-// import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { useAuth } from '@/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import React from 'react';
@@ -10,9 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 function CustomTopHeader() {
   const router = useRouter();
   const pathname = usePathname();
-  // const isConnected = useNetworkStatus();
-
-  const tabs = [
+  const allTabs = [
     { name: 'form', label: 'Registrar', icon: 'create', path: '/form' },
     { name: 'records', label: 'Registros', icon: 'list', path: '/records' },
     { name: 'profile', label: 'Perfil', icon: 'person', path: '/profile' },
@@ -29,12 +27,11 @@ function CustomTopHeader() {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.onlineStatus} />
-          {/* <SyncBadge isConnected={isConnected} /> */}
         </View>
       </View>
 
       <View style={styles.tabsRow}>
-        {tabs.map((tab) => {
+        {allTabs.map((tab) => {
           const isFocused = pathname.includes(tab.path);
           return (
             <TouchableOpacity
@@ -61,13 +58,15 @@ function CustomTopHeader() {
 }
 
 export default function TabLayout() {
+  const { user } = useAuth();
+
   return (
     <View style={{ flex: 1 }}>
       <CustomTopHeader />
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { display: 'none' }, // Ocultamos la de abajo definitivamente
+          tabBarStyle: { display: 'none' },
         }}
       >
         <Tabs.Screen name="index" options={{ href: null }} />

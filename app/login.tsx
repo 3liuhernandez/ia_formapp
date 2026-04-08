@@ -1,9 +1,13 @@
 import { Button } from '@/components/Button';
+import { DebugOverlay } from '@/components/DebugOverlay';
 import { FormInput } from '@/components/FormInput';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { authenticateUser } from '@/database/operations';
+import { loginToApi } from '@/services/api';
+import { isOnline } from '@/services/network';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useState } from 'react';
@@ -16,9 +20,6 @@ import {
     Text,
     View,
 } from 'react-native';
-import Constants from 'expo-constants';
-import { DebugOverlay } from '@/components/DebugOverlay';
-import { logger } from '@/services/logger';
 
 export default function LoginScreen() {
     const db = useSQLiteContext();
@@ -27,7 +28,7 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    
+
     // Debug state
     const [debugVisible, setDebugVisible] = useState(false);
     const [tapCount, setTapCount] = useState(0);
@@ -51,17 +52,46 @@ export default function LoginScreen() {
         setError('');
 
         try {
-            const user = await authenticateUser(db, username.trim(), password);
+            console.log(`[Login] Iniciando login para: ${username}`);
+            let user = await authenticateUser(db, username.trim(), password.trim());
+            let isFromApi = false;
+
+            // Si no está local y hay internet, buscamos en la API
+            if (!user) {
+                console.log('[Login] No se encontró usuario local, verificando conexión...');
+                const online = await isOnline();
+                console.log(`[Login] Conexión detectada: ${online}`);
+                if (online) {
+                    console.log('[Login] Intentando login vía API...');
+                    const apiResponse = await loginToApi(username.trim(), password.trim());
+                    console.log(`[Login] Respuesta API recibida: ${apiResponse.success ? 'EXITO' : 'FALLO'}`);
+                    if (apiResponse.success && apiResponse.data) {
+                        const apiData = apiResponse.data;
+                        user = {
+                            id: apiData.id || 0,
+                            username: apiData.username || username.trim(),
+                            nombre: apiData.name || 'Usuario Online',
+                            role: apiData.role || 1,
+                            token: apiData.token,
+                            expiresAt: apiData.expires_at ? new Date(apiData.expires_at).getTime() :
+                                (Date.now() + 8 * 60 * 60 * 1000)
+                        };
+                        isFromApi = true;
+                    }
+                }
+            }
 
             if (user) {
+                console.log('[Login] Login final exitoso, guardando sesión...');
                 await login(user);
                 router.replace('/(tabs)/form');
             } else {
+                console.log('[Login] No se pudo autenticar al usuario ni local ni remotamente');
                 setError('Usuario o contraseña incorrectos');
             }
-        } catch (err) {
-            setError('Error al iniciar sesión');
-            console.error(err);
+        } catch (err: any) {
+            console.error('[Login] Error CRITICO:', err);
+            setError(`Error al iniciar sesión: ${err.message || 'Error desconocido'}`);
         } finally {
             setLoading(false);
         }
@@ -123,19 +153,20 @@ export default function LoginScreen() {
                     />
 
                     <Text style={styles.hint}>
+                        {/* Usuario por defecto insertado en schema.ts */}
                         Usuario por defecto: admin / admin123
                     </Text>
                 </View>
 
                 <View style={styles.footer}>
                     <Text style={styles.versionText}>
-                        v{Constants.expoConfig?.version || '1.0.0'} (Build {Constants.expoConfig?.android?.versionCode || '1'})
+                        v{Constants.expoConfig?.version || '*1.0.0'} (Build {Constants.expoConfig?.android?.versionCode || '*1'})
                     </Text>
                 </View>
 
-                <DebugOverlay 
-                    visible={debugVisible} 
-                    onClose={() => setDebugVisible(false)} 
+                <DebugOverlay
+                    visible={debugVisible}
+                    onClose={() => setDebugVisible(false)}
                 />
             </ScrollView>
         </KeyboardAvoidingView>

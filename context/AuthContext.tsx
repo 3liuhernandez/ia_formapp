@@ -49,7 +49,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // 2. Cargamos usuario
             const userData = await SecureStore.getItemAsync('user');
             if (userData) {
-                setUser(JSON.parse(userData));
+                const parsedUser = JSON.parse(userData);
+                
+                // Verificar si tiene tiempo de expiración (sesiones API)
+                if (parsedUser.expiresAt && Date.now() > parsedUser.expiresAt) {
+                    console.log('[Auth] Sesión expirada');
+                    await SecureStore.deleteItemAsync('user');
+                    setUser(null);
+                } else {
+                    setUser(parsedUser);
+                }
             }
         } catch (error) {
             console.error('Error loading initial auth state:', error);

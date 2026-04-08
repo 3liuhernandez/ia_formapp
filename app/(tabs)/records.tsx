@@ -7,7 +7,9 @@ import {
     deletePersona,
     getAllPersonas,
     getPersonasByDateRange,
+    getPersonasForUser,
     getSyncStats, searchPersonas,
+    getProfile
 } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { fetchPersonasLog } from '@/services/api';
@@ -51,12 +53,32 @@ export default function RecordsScreen() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         try {
-            if (!db) return;
-            const data = search.trim() ? await searchPersonas(db, search.trim()) : await getAllPersonas(db);
+            if (!db || !user) return;
+            
+            let data: Persona[] = [];
+            if (user.role === 1) {
+                // Rol 1: Solo sus propios registros de las últimas 24h
+                data = await getPersonasForUser(db, user.id, true);
+                if (search.trim()) {
+                    const term = search.trim().toLowerCase();
+                    data = data.filter(p => 
+                        p.nombre.toLowerCase().includes(term) || 
+                        p.cedula.toLowerCase().includes(term) ||
+                        p.telefono.toLowerCase().includes(term)
+                    );
+                }
+            } else {
+                // Otros roles: Ver todo + búsqueda
+                data = search.trim() ? await searchPersonas(db, search.trim()) : await getAllPersonas(db);
+            }
+            
             setPersonas(data);
-            setStats(await getSyncStats(db));
+            
+            // Estadísticas filtradas para el Rol 1
+            const statsFilters = user.role === 1 ? { id: user.id, only24h: true } : { id: undefined, only24h: false };
+            setStats(await getSyncStats(db, statsFilters.id, statsFilters.only24h));
         } catch (err) { console.error('Error loading data:', err); }
-    }, [db, search]);
+    }, [db, search, user]);
 
     useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
@@ -111,13 +133,16 @@ export default function RecordsScreen() {
                 }
             }
 
+            const currentProfile = await getProfile(db);
+            const registrantCedula = currentProfile?.cedula || 'UNKNOWN';
+
             // Deduplication logic
             const mergedMap = new Map<string, Persona>();
 
             const processRecord = (p: Persona) => {
                 // User requested key: Person Cedula + Registrant Cedula
                 // If person has no cedula: Normalized Name + Registrant Cedula
-                const registrantId = p.registrant_id || user?.cedula || 'UNKNOWN';
+                const registrantId = p.registrant_id || registrantCedula;
                 let key = '';
                 
                 if (p.cedula && p.cedula.trim()) {

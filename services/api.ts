@@ -1,4 +1,5 @@
 import type { PersonaInput } from '@/types';
+import * as SecureStore from 'expo-secure-store';
 import { getApiConfig } from './settings';
 
 interface ApiResponse {
@@ -13,15 +14,19 @@ async function request(
 ): Promise<ApiResponse> {
     try {
         const { apiUrl, apiKey } = await getApiConfig();
-        
+
         // Remove trailing slash if present in apiUrl to avoid double slashes
         const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+
+        const userData = await SecureStore.getItemAsync('user');
+        const user = userData ? JSON.parse(userData) : null;
 
         const response = await fetch(`${base}${endpoint}`, {
             headers: {
                 'Content-Type': 'application/json',
                 Accept: 'application/json',
                 'X-API-Key': apiKey,
+                ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
                 ...options.headers,
             },
             ...options,
@@ -64,7 +69,7 @@ export async function fetchPersonasLog(from?: string, to?: string): Promise<ApiR
     params.append('limit', '10000'); // Export allows up to 10k items
     if (from) params.append('start_date', from);
     if (to) params.append('end_date', to);
-    
+
     return request(`/personas?${params.toString()}`, {
         method: 'GET',
     });

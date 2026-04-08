@@ -3,12 +3,11 @@ import { FormInput } from '@/components/FormInput';
 import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { insertPersona } from '@/database/operations';
+import { getProfile, insertPeople } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { syncPendingRecords } from '@/services/sync';
 import type { PersonaInput } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
-import * as SQLite from 'expo-sqlite';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useState } from 'react';
 import {
@@ -20,6 +19,7 @@ const GENERO_OPTIONS = ['Hombre', 'Mujer'] as const;
 
 // Removed separate getDb helper to avoid bypassing initialization
 
+// TODO: saqué de PersonaInput el registrant_id, revisar si es necesario o no
 const EMPTY_FORM: PersonaInput = {
     nombre: '', cedula: '', edad: '', telefono: '', telefono_opcional: '',
     email: '', direccion: '', punto_referencia: '', sector_barrio: '',
@@ -36,6 +36,15 @@ export default function FormScreen() {
     const [modalMessage, setModalMessage] = useState('');
     const [modalIsOffline, setModalIsOffline] = useState(false);
     const [form, setForm] = useState<PersonaInput>({ ...EMPTY_FORM });
+    const [profile, setProfile] = useState<any>(null);
+
+    React.useEffect(() => {
+        const loadProfile = async () => {
+            const p = await getProfile(contextDb);
+            setProfile(p);
+        };
+        loadProfile();
+    }, [contextDb]);
 
     const updateField = (field: keyof PersonaInput, value: string) => {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -56,7 +65,9 @@ export default function FormScreen() {
         if (!validate()) return;
         setLoading(true);
         try {
-            await insertPersona(contextDb, { ...form, registrant_id: user?.cedula || '' }, user?.id ?? 1);
+
+            // TODO: revisar si es posible generar un ID unico por telefono o usuario en caso de que el perfil no esté configurado al momento de guardar el registro
+            await insertPeople(contextDb, { ...form, registrant_id: profile?.cedula || 0 }, user?.id ?? 1);
             setForm({ ...EMPTY_FORM });
             if (isConnected) {
                 setModalMessage('Registro guardado exitosamente'); setModalIsOffline(false);

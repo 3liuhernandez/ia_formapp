@@ -35,8 +35,9 @@ export interface User {
     id: number;
     username: string;
     nombre: string;
-    cedula: string;
     role?: number; // 1: servidor, 2: coordinador, 3: admin
+    token?: string;
+    expiresAt?: number; // Timestamp
 }
 
 export interface SyncStats {
