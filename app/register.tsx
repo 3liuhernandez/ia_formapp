@@ -3,9 +3,9 @@ import { FormInput } from '@/components/FormInput';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { saveProfile } from '@/database/operations';
-import { sendPersonaToApi } from '@/services/api'; // We'll use this or similar for registrant
 import { getApiConfig } from '@/services/settings';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -21,14 +21,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Constants from 'expo-constants';
 
 const GENERO_OPTIONS = ['Hombre', 'Mujer'] as const;
 
 export default function RegisterScreen() {
     const db = useSQLiteContext();
     const router = useRouter();
-    const { login, setHasProfile } = useAuth();
+    const { setHasProfile } = useAuth();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [form, setForm] = useState({
@@ -49,10 +48,10 @@ export default function RegisterScreen() {
             // Esperamos un poco para evitar crash en la animación de entrada
             // y para que el usuario no vea el "parpadeo" de etiquetas
             await new Promise(resolve => setTimeout(resolve, 200));
-            
+
             try {
                 if (!db || !mounted) return;
-                
+
                 const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
                 if (profile && mounted) {
                     isEditing.current = true;
@@ -139,22 +138,28 @@ export default function RegisterScreen() {
                 console.warn('[Register] API sync network error, will retry later:', apiError);
             }
 
-            // 3. Mark as logged in and profile as existing
-            setHasProfile(true);
-            await login({
-                id: 1, // Mock local ID
-                username: form.cedula,
-                cedula: form.cedula,
-                nombre: `${form.nombres} ${form.apellidos}`,
-                role: 1
-            });
+            // 3. Check if the profile is being edited
+            if (!isEditing.current) {
 
-            Alert.alert('¡Éxito!', isEditing.current ? 'Perfil actualizado.' : 'Perfil configurado correctamente.');
-            
+                setHasProfile(true); // Indica que ya no debe mostrar la pantalla de registro
+
+                // El login está comentado, por lo tanto user sigue siendo null
+                /* await login({
+                    id: 1,
+                    username: form.nombres,
+                    nombre: `${form.nombres} ${form.apellidos}`,
+                    role: 1
+                }); */
+                Alert.alert('¡Éxito!', 'Perfil configurado correctamente.');
+                router.replace('/login');
+            }
+
             if (isEditing.current) {
+                // Si ya estamos EDITANDO, no llamamos a login()
+                // porque ya tenemos una sesión activa (sea admin o sea el id: 1 de antes)
+                // Quizás solo queramos actualizar el nombre en la pantalla sin cerrar sesión
+                Alert.alert('Éxito', 'Perfil actualizado correctamente');
                 router.back();
-            } else {
-                router.replace('/(tabs)/form');
             }
 
         } catch (error) {
@@ -183,7 +188,7 @@ export default function RegisterScreen() {
                 <View style={styles.header}>
                     <Ionicons name={isEditing.current ? "create" : "person-add"} size={40} color={Colors.primary} />
                     <Text style={styles.title}>{isEditing.current ? "Editar Perfil" : "Configurar Perfil"}</Text>
-                    { !isEditing.current && <Text style={styles.subtitle}>Solo necesitamos esto la primera vez</Text> }
+                    {!isEditing.current && <Text style={styles.subtitle}>Solo necesitamos esto la primera vez</Text>}
                 </View>
 
                 <View style={styles.card}>
@@ -258,8 +263,8 @@ export default function RegisterScreen() {
                     />
 
                     {isEditing.current && (
-                        <TouchableOpacity 
-                            onPress={() => router.back()} 
+                        <TouchableOpacity
+                            onPress={() => router.back()}
                             style={styles.cancelLink}
                         >
                             <Text style={styles.cancelText}>Cancelar</Text>
