@@ -5,13 +5,14 @@ import { useAuth } from '@/context/AuthContext';
 import { getSyncStats, clearProfile } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { getApiConfig, saveApiConfig, resetApiConfig, ApiConfig } from '@/services/settings';
+import { checkForUpdates, downloadAndInstallUpdate } from '@/services/update';
 import type { SyncStats } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useCallback, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -30,6 +31,8 @@ export default function ProfileScreen() {
     const [showSettings, setShowSettings] = useState(false);
     const [config, setConfig] = useState<ApiConfig>({ apiUrl: '', apiKey: '' });
     const [tempConfig, setTempConfig] = useState<ApiConfig>({ apiUrl: '', apiKey: '' });
+    const [updating, setUpdating] = useState(false);
+    const [updateProgress, setUpdateProgress] = useState(0);
 
     useFocusEffect(useCallback(() => {
         let mounted = true;
@@ -108,6 +111,43 @@ export default function ProfileScreen() {
                 },
             ]
         );
+    };
+
+    const handleCheckUpdates = async () => {
+        if (!isConnected) {
+            Alert.alert('Sin Conexión', 'Necesitas internet para buscar actualizaciones.');
+            return;
+        }
+
+        setUpdating(true);
+        try {
+            const updateInfo = await checkForUpdates();
+            if (updateInfo) {
+                Alert.alert(
+                    'Actualización Disponible',
+                    `Existe una nueva versión: v${updateInfo.version}\n\n${updateInfo.releaseNotes || 'Mejoras de rendimiento y corrección de errores.'}\n\n¿Deseas descargar e instalar ahora?`,
+                    [
+                        { text: 'Ahora no', style: 'cancel', onPress: () => setUpdating(false) },
+                        { 
+                            text: 'Actualizar', 
+                            onPress: () => {
+                                downloadAndInstallUpdate(updateInfo.downloadUrl, (p) => setUpdateProgress(p))
+                                    .finally(() => {
+                                        setUpdating(false);
+                                        setUpdateProgress(0);
+                                    });
+                            } 
+                        },
+                    ]
+                );
+            } else {
+                setUpdating(false);
+                Alert.alert('Sin actualizaciones', 'Ya tienes instalada la versión más reciente.');
+            }
+        } catch (e) {
+            setUpdating(false);
+            Alert.alert('Error', 'No se pudo verificar la actualización.');
+        }
     };
 
     const syncPercentage = stats.total > 0 ? Math.round((stats.synced / stats.total) * 100) : 0;
@@ -196,8 +236,36 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Configuración de Sistema</Text>
+                <Text style={styles.sectionTitle}>Sistema y Actualización</Text>
                 <View style={styles.statsCard}>
+                    <TouchableOpacity 
+                        style={styles.settingsItem}
+                        onPress={handleCheckUpdates}
+                        disabled={updating}
+                    >
+                        <View style={[styles.settingsIcon, updating && { backgroundColor: 'rgba(52, 152, 219, 0.1)' }]}>
+                            {updating ? (
+                                <ActivityIndicator size="small" color={Colors.primary} />
+                            ) : (
+                                <Ionicons name="cloud-download-outline" size={20} color={Colors.primary} />
+                            )}
+                        </View>
+                        <View style={styles.settingsContent}>
+                            <Text style={styles.settingsLabel}>
+                                {updating ? `Descargando v...` : 'Buscar Actualización'}
+                            </Text>
+                            <Text style={styles.settingsValue}>
+                                {updating 
+                                    ? `Progreso: ${Math.round(updateProgress * 100)}%` 
+                                    : 'Recuerda que estas actualizaciones son fuera de la tienda.'
+                                }
+                            </Text>
+                        </View>
+                        {!updating && <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />}
+                    </TouchableOpacity>
+
+                    <View style={styles.divider} />
+
                     <TouchableOpacity 
                         style={styles.settingsItem}
                         onPress={() => setShowSettings(true)}
