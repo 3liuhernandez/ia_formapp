@@ -32,13 +32,16 @@ export async function checkForUpdates(): Promise<UpdateInfo | null> {
             return null;
         }
         
-        const data: UpdateInfo = await response.json();
+        const responseData = await response.json();
         const currentVersion = Constants.expoConfig?.version || '1.0.0';
         
-        console.log(`[UpdateService] Versión actual: ${currentVersion}, Versión API: ${data.version}`);
+        // Extraemos el objeto interno 'data' que envía tu servidor
+        const updateInfo: UpdateInfo | null = responseData.success ? responseData.data : responseData;
+        
+        console.log(`[UpdateService] Versión actual: ${currentVersion}, Versión API: ${updateInfo?.version}`);
 
-        if (isVersionGreater(data.version, currentVersion)) {
-            return data;
+        if (updateInfo && updateInfo.version && isVersionGreater(updateInfo.version, currentVersion)) {
+            return updateInfo;
         }
         
         return null;
