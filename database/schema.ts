@@ -1,125 +1,109 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
-  const latestVersion = 11;
-  const version = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
-
-  let currentVersion = version?.user_version ?? 0;
+  const latestVersion = 1;
+  const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  const currentVersion = version?.user_version ?? 0;
 
   console.log(`[DB] Version actual: ${currentVersion} | latestVersion: ${latestVersion}`);
   if (currentVersion >= latestVersion) return;
 
-  console.log(`[DB] Inicializando/Actualizando base de datos (v${currentVersion} -> v${latestVersion})...`);
+  console.log(`[DB] Inicializando base de datos (v${currentVersion} -> v${latestVersion})...`);
 
-  // script inicial para generar las tablas de la DB
-  if (currentVersion === 0) {
-    try {
+  try {
 
-      await db.execAsync(`
-        PRAGMA journal_mode = 'delete';
-        PRAGMA foreign_keys = ON;
+    // Solo para dev: borra todas las tablas y vuelve a inicializar
+    await db.execAsync(`
+      PRAGMA foreign_keys = OFF;
+      DROP TABLE IF EXISTS people;
+      DROP TABLE IF EXISTS user;
+      DROP TABLE IF EXISTS profile;
+      PRAGMA user_version = 0;
+      PRAGMA foreign_keys = ON;
+    `);
 
-        -- Borrar tablas
-        -- DROP TABLE IF EXISTS users;
-        -- DROP TABLE IF EXISTS profile;
-        -- DROP TABLE IF EXISTS personas;
-        -- DROP TABLE IF EXISTS people;
-        -- Luego siguen tus CREATE TABLE...
+    await db.execAsync(`
+      PRAGMA journal_mode = 'delete';
+      PRAGMA foreign_keys = ON;
 
-        -- Tabla para guardar los usuarios
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL,
-          nombre TEXT NOT NULL,
-          role INTEGER DEFAULT 1,
-          created_at TEXT DEFAULT (datetime('now','localtime'))
-        );
+      -- ────────────────────────────────────────────────────────
+      -- PROFILE (datos personales / dispositivo del usuario)
+      -- ────────────────────────────────────────────────────────
+      CREATE TABLE IF NOT EXISTS profile (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        dni           INTEGER UNIQUE,
+        name          TEXT NOT NULL,
+        last_name     TEXT NOT NULL,
+        phone         TEXT NOT NULL,
+        email         TEXT DEFAULT '',
+        gender        TEXT DEFAULT 'M',
+        brand         TEXT DEFAULT '',
+        model         TEXT DEFAULT '',
+        os_version    TEXT DEFAULT '',
+        device_id     TEXT DEFAULT '',
+        synced        INTEGER DEFAULT 0
+      );
 
-        -- Tabla para guardar el perfil del usuario
-        CREATE TABLE IF NOT EXISTS profile (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          cedula INTEGER UNIQUE,
-          nombres TEXT NOT NULL,
-          apellidos TEXT NOT NULL,
-          telefono TEXT NOT NULL,
-          email TEXT DEFAULT '',
-          sexo TEXT DEFAULT 'M',
-          brand TEXT DEFAULT '',
-          model TEXT DEFAULT '',
-          os_version TEXT DEFAULT '',
-          device_id TEXT DEFAULT '',
-          synced INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now','localtime'))
-        );
+      -- ────────────────────────────────────────────────────────
+      -- USER (autenticación)
+      -- ────────────────────────────────────────────────────────
+      CREATE TABLE IF NOT EXISTS user (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        username      TEXT NOT NULL UNIQUE,
+        password      TEXT NOT NULL,
+        name          TEXT NOT NULL,
+        role_id       INTEGER NOT NULL DEFAULT 1,
+        role_name     TEXT NOT NULL DEFAULT 'register'
+                        CHECK (role_name IN ('register','admin')),
+        profile_dni   INTEGER,
+        token         TEXT,
+        expires_at    TEXT,
+        created_at    TEXT DEFAULT (datetime('now','localtime')),
+        updated_at    TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (profile_dni) REFERENCES profile(dni) ON DELETE SET NULL
+      );
 
-        -- Tabla para guardar las personas registradas
-        CREATE TABLE IF NOT EXISTS people (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          nombre TEXT NOT NULL,
-          cedula TEXT NOT NULL,
-          edad TEXT DEFAULT '',
-          telefono TEXT NOT NULL,
-          telefono_opcional TEXT DEFAULT '',
-          email TEXT DEFAULT '',
-          direccion TEXT DEFAULT '',
-          punto_referencia TEXT DEFAULT '',
-          sector_barrio TEXT DEFAULT '',
-          fecha_nacimiento TEXT DEFAULT '',
-          genero TEXT DEFAULT 'M',
-          synced INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now','localtime')),
-          user_id INTEGER,
-          registrant_id INTEGER,
-          FOREIGN KEY (user_id) REFERENCES users(id),
-          FOREIGN KEY (registrant_id) REFERENCES profile(cedula)
-        );
+      -- ────────────────────────────────────────────────────────
+      -- PEOPLE (personas registradas)
+      -- ────────────────────────────────────────────────────────
+      CREATE TABLE IF NOT EXISTS people (
+        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+        dni                INTEGER NOT NULL,
+        name               TEXT NOT NULL,
+        last_name          TEXT NOT NULL DEFAULT '',
+        phone              TEXT NOT NULL,
+        phone_optional     TEXT DEFAULT '',
+        email              TEXT DEFAULT '',
+        address            TEXT DEFAULT '',
+        parish             TEXT DEFAULT '',
+        address_reference  TEXT DEFAULT '',
+        gender             TEXT DEFAULT 'M',
+        birthday_date      TEXT DEFAULT '',
+        comments           TEXT DEFAULT '',
+        visit_day          TEXT DEFAULT '',
+        visit_time         TEXT DEFAULT '',
+        registrant_dni     INTEGER,
+        synced             INTEGER DEFAULT 0,
+        created_at         TEXT DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (registrant_dni) REFERENCES profile(dni) ON DELETE SET NULL
+      );
 
-        -- Insertar usuario por defecto
-        INSERT OR REPLACE INTO users (username, password, nombre) 
-        VALUES ('admin', 'admin123', 'Servidor');
-        
-        -- Asegurar actualización si el ID era diferente
-        -- UPDATE users SET password = 'admin123' WHERE username = 'admin';
+      CREATE INDEX IF NOT EXISTS idx_people_dni            ON people(dni);
+      CREATE INDEX IF NOT EXISTS idx_people_registrant_dni ON people(registrant_dni);
+      CREATE INDEX IF NOT EXISTS idx_people_synced         ON people(synced);
 
-        PRAGMA user_version = ${latestVersion};
-      `);
-      currentVersion = latestVersion;
+      -- ────────────────────────────────────────────────────────
+      -- Usuario admin por defecto
+      -- ────────────────────────────────────────────────────────
+      INSERT OR REPLACE INTO user (username, password, name, role_name, profile_dni)
+      VALUES ('admin', 'admin123', 'Servidor', 'admin', 1);
 
-    } catch (error) {
-      console.error('[DB] CRITICAL: Falló la inicialización:', error);
-      throw error;
-    }
+      PRAGMA user_version = ${latestVersion};
+    `);
+
+    console.log(`[DB] Inicialización completada exitosamente v${latestVersion}`);
+  } catch (error) {
+    console.error('[DB] CRITICAL: Falló la inicialización:', error);
+    throw error;
   }
-
-  // condicion de ejemplo para correr migraciones que modifiquen las tablas actuales
-  if (currentVersion === 98) {
-    try {
-
-      // Migraciones manuales para tablas existentes
-      console.error('Migraciones manuales para tablas existentes:');
-
-      try {
-        const usersInfo = await db.getAllAsync<{ name: string }>("PRAGMA table_info(users)");
-        if (!usersInfo.some(c => c.name === 'role')) {
-          // await db.execAsync("ALTER TABLE users ADD COLUMN role INTEGER DEFAULT 1;");
-          // await db.execAsync("UPDATE users SET role = 1 WHERE username = 'admin';");
-          // console.log("[DB] Columna 'role' añadida a users");
-        }
-      } catch (e) {
-        console.error("[DB] Error migrando tabla users:", e);
-      }
-
-      // actualiza la version
-      currentVersion = 99;
-    } catch (error) {
-      console.error('[DB] CRITICAL: Falló la migración:', error);
-      throw error;
-    }
-  }
-
-  await db.execAsync(`PRAGMA user_version = ${currentVersion};`);
-
-  console.log(`[DB] Inicialización completada exitosamente v${currentVersion}`);
-
 }
