@@ -33,30 +33,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const loadInitialState = async () => {
         try {
-            // 1. Verificamos perfil
-            let profileExists = false;
+            // 1. Cargamos el perfil completo de una vez (solo si existe la tabla)
+            let currentProfile: any = null;
             try {
                 if (db) {
-                    const rs = await db.getFirstAsync('SELECT id FROM profile LIMIT 1');
-                    profileExists = !!rs;
+                    currentProfile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
                 }
             } catch (e) {
-                // Table might not exist on first run
-                profileExists = false;
+                // Si la tabla no existe o hay error, seguimos con profile null
             }
-            setHasProfileState(profileExists);
+
+            setHasProfileState(!!currentProfile);
 
             // 2. Cargamos usuario
             const userData = await SecureStore.getItemAsync('user');
             if (userData) {
                 const parsedUser = JSON.parse(userData);
                 
-                // Verificar si tiene tiempo de expiración (sesiones API)
+                // Verificar si tiene tiempo de expiración
                 if (parsedUser.expiresAt && Date.now() > parsedUser.expiresAt) {
-                    console.log('[Auth] Sesión expirada');
                     await SecureStore.deleteItemAsync('user');
                     setUser(null);
                 } else {
+                    // Adjuntamos el perfil que ya cargamos arriba GRATIS
+                    parsedUser.profile = currentProfile;
                     setUser(parsedUser);
                 }
             }

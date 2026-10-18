@@ -27,7 +27,7 @@ const GENERO_OPTIONS = ['Hombre', 'Mujer'] as const;
 export default function RegisterScreen() {
     const db = useSQLiteContext();
     const router = useRouter();
-    const { setHasProfile } = useAuth();
+    const { user, login, setHasProfile } = useAuth();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [form, setForm] = useState({
@@ -73,6 +73,29 @@ export default function RegisterScreen() {
         loadExistingProfile();
         return () => { mounted = false; };
     }, [db]);
+
+    const fillRandomData = () => {
+        const names = ['Juan', 'Pedro', 'Maria', 'Jose', 'Ana', 'Luis', 'Sofia', 'Carlos', 'Diego', 'Lucia'];
+        const lastNames = ['Perez', 'Garcia', 'Gonzalez', 'Rodriguez', 'Lopez', 'Martinez', 'Hernandez', 'Diaz', 'Torres', 'Ramirez'];
+        const domains = ['gmail.com', 'outlook.com', 'yahoo.com', 'hotmail.com'];
+
+        const randomName = names[Math.floor(Math.random() * names.length)];
+        const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const randomCedula = Math.floor(Math.random() * 20000000 + 10000000).toString();
+        const randomPhone = '0412' + Math.floor(Math.random() * 9000000 + 1000000).toString();
+        const randomEmail = `${randomName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 100)}@${domains[Math.floor(Math.random() * domains.length)]}`;
+        const randomSexo = Math.random() > 0.5 ? 'M' : 'F';
+
+        setForm({
+            cedula: randomCedula,
+            nombres: randomName,
+            apellidos: randomLastName,
+            telefono: randomPhone,
+            email: randomEmail,
+            sexo: randomSexo,
+        });
+        setErrors({});
+    };
 
     const updateField = (field: string, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
@@ -155,9 +178,11 @@ export default function RegisterScreen() {
             }
 
             if (isEditing.current) {
-                // Si ya estamos EDITANDO, no llamamos a login()
-                // porque ya tenemos una sesión activa (sea admin o sea el id: 1 de antes)
-                // Quizás solo queramos actualizar el nombre en la pantalla sin cerrar sesión
+                // Si ya estamos EDITANDO, actualizamos el perfil en la sesión actual
+                // para que el resto de la App vea los cambios de inmediato
+                if (user) {
+                    await login({ ...user, profile: fullProfile as any });
+                }
                 Alert.alert('Éxito', 'Perfil actualizado correctamente');
                 router.back();
             }
@@ -189,6 +214,10 @@ export default function RegisterScreen() {
                     <Ionicons name={isEditing.current ? "create" : "person-add"} size={40} color={Colors.primary} />
                     <Text style={styles.title}>{isEditing.current ? "Editar Perfil" : "Configurar Perfil"}</Text>
                     {!isEditing.current && <Text style={styles.subtitle}>Solo necesitamos esto la primera vez</Text>}
+                    <TouchableOpacity onPress={fillRandomData} style={styles.debugFillBtn}>
+                        <Ionicons name="flask-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.debugFillText}>Llenar datos prueba</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.card}>
@@ -322,5 +351,22 @@ const styles = StyleSheet.create({
         color: Colors.textMuted,
         fontSize: 10,
         opacity: 0.6,
+    },
+    debugFillBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: Spacing.sm,
+        padding: 6,
+        paddingHorizontal: 12,
+        borderRadius: BorderRadius.full,
+        backgroundColor: 'rgba(0, 102, 204, 0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 102, 204, 0.1)',
+    },
+    debugFillText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: Colors.primary,
     },
 });

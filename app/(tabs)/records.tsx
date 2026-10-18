@@ -8,8 +8,7 @@ import {
     getAllPersonas,
     getPersonasByDateRange,
     getPersonasForUser,
-    getSyncStats, searchPersonas,
-    getProfile
+    getSyncStats, searchPersonas
 } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { fetchPersonasLog } from '@/services/api';
@@ -133,8 +132,7 @@ export default function RecordsScreen() {
                 }
             }
 
-            const currentProfile = await getProfile(db);
-            const registrantCedula = currentProfile?.cedula || 'UNKNOWN';
+            const registrantCedula = user?.profile?.cedula || 'UNKNOWN';
 
             // Deduplication logic
             const mergedMap = new Map<string, Persona>();

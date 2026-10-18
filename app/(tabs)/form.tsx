@@ -3,7 +3,7 @@ import { FormInput } from '@/components/FormInput';
 import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getProfile, insertPeople } from '@/database/operations';
+import { insertPeople } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { syncPendingRecords } from '@/services/sync';
 import type { PersonaInput } from '@/types';
@@ -36,15 +36,34 @@ export default function FormScreen() {
     const [modalMessage, setModalMessage] = useState('');
     const [modalIsOffline, setModalIsOffline] = useState(false);
     const [form, setForm] = useState<PersonaInput>({ ...EMPTY_FORM });
-    const [profile, setProfile] = useState<any>(null);
 
-    React.useEffect(() => {
-        const loadProfile = async () => {
-            const p = await getProfile(contextDb);
-            setProfile(p);
-        };
-        loadProfile();
-    }, [contextDb]);
+    const fillRandomData = () => {
+        const names = ['Juan', 'Pedro', 'Maria', 'Jose', 'Ana', 'Luis', 'Sofia', 'Carlos', 'Diego', 'Lucia'];
+        const lastNames = ['Perez', 'Garcia', 'Gonzalez', 'Rodriguez', 'Lopez', 'Martinez', 'Hernandez', 'Diaz', 'Torres', 'Ramirez'];
+        const locations = ['Calle Principal', 'Av. Bolivar', 'Barrio Obrero', 'Sector El Centro', 'Urbanización Nueva'];
+        const domains = ['gmail.com', 'outlook.com', 'yahoo.com'];
+
+        const randomName = `${names[Math.floor(Math.random() * names.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+        const randomCedula = Math.floor(Math.random() * 20000000 + 10000000).toString();
+        const randomPhone = '0414' + Math.floor(Math.random() * 9000000 + 1000000).toString();
+        const randomEmail = `${randomName.toLowerCase().replace(/\s/g, '.')}${Math.floor(Math.random() * 99)}@${domains[Math.floor(Math.random() * domains.length)]}`;
+        const randomAge = Math.floor(Math.random() * 50 + 18).toString();
+
+        setForm({
+            nombre: randomName,
+            cedula: randomCedula,
+            edad: randomAge,
+            telefono: randomPhone,
+            telefono_opcional: '',
+            email: randomEmail,
+            direccion: locations[Math.floor(Math.random() * locations.length)],
+            punto_referencia: 'Punto de prueba',
+            sector_barrio: 'Sector Prueba',
+            fecha_nacimiento: '01/01/1990',
+            genero: Math.random() > 0.5 ? 'M' : 'F',
+        });
+        setErrors({});
+    };
 
     const updateField = (field: keyof PersonaInput, value: string) => {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -67,7 +86,8 @@ export default function FormScreen() {
         try {
 
             // TODO: revisar si es posible generar un ID unico por telefono o usuario en caso de que el perfil no esté configurado al momento de guardar el registro
-            await insertPeople(contextDb, { ...form, registrant_id: profile?.cedula || 0 }, user?.id ?? 1);
+            const registrantId = user?.profile?.cedula || 'SIN_PERFIL';
+            await insertPeople(contextDb, { ...form, registrant_id: registrantId }, user?.id ?? 1);
             setForm({ ...EMPTY_FORM });
             if (isConnected) {
                 setModalMessage('Registro guardado exitosamente'); setModalIsOffline(false);
@@ -89,6 +109,10 @@ export default function FormScreen() {
                     <View>
                         <Text style={styles.title}>Nuevo Registro</Text>
                         <View style={styles.goldLine} />
+                        <TouchableOpacity onPress={fillRandomData} style={styles.debugFillBtn}>
+                            <Ionicons name="flask-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.debugFillText}>Datos random</Text>
+                        </TouchableOpacity>
                     </View>
                     <SyncBadge isConnected={isConnected} />
                 </View>
@@ -213,4 +237,23 @@ const styles = StyleSheet.create({
     modalMessage: { fontSize: FontSize.md, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: Spacing.md },
     modalGoldLine: { width: 50, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginBottom: Spacing.lg },
     modalButton: { width: '100%' },
+    debugFillBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: Spacing.sm,
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: BorderRadius.full,
+        backgroundColor: 'rgba(0, 102, 204, 0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 102, 204, 0.1)',
+        alignSelf: 'flex-start'
+    },
+    debugFillText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: Colors.primary,
+        textTransform: 'uppercase'
+    },
 });

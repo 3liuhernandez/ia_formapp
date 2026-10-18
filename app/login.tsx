@@ -82,6 +82,16 @@ export default function LoginScreen() {
             }
 
             if (user) {
+                // Adjuntar el perfil local a la sesión antes de completar el login
+                try {
+                    const profile = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
+                    if (profile) {
+                        user.profile = profile as any;
+                    }
+                } catch (e) {
+                    console.warn('[Login] No se pudo cargar el perfil local', e);
+                }
+
                 console.log('[Login] Login final exitoso, guardando sesión...');
                 await login(user);
                 router.replace('/(tabs)/form');

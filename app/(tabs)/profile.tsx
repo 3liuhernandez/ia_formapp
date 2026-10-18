@@ -2,9 +2,9 @@ import { Button } from '@/components/Button';
 import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { getSyncStats, clearProfile } from '@/database/operations';
+import { clearProfile, getSyncStats } from '@/database/operations';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { getApiConfig, saveApiConfig, resetApiConfig, ApiConfig } from '@/services/settings';
+import { ApiConfig, getApiConfig, resetApiConfig, saveApiConfig } from '@/services/settings';
 import { checkForUpdates, downloadAndInstallUpdate } from '@/services/update';
 import type { SyncStats } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +27,6 @@ export default function ProfileScreen() {
     const { user, logout, setHasProfile } = useAuth();
     const isConnected = useNetworkStatus();
     const [stats, setStats] = useState<SyncStats>({ total: 0, synced: 0, pending: 0 });
-    const [profile, setProfile] = useState<any>(null);
     const [showSettings, setShowSettings] = useState(false);
     const [config, setConfig] = useState<ApiConfig>({ apiUrl: '', apiKey: '' });
     const [tempConfig, setTempConfig] = useState<ApiConfig>({ apiUrl: '', apiKey: '' });
@@ -42,9 +41,7 @@ export default function ProfileScreen() {
             try {
                 const s = await getSyncStats(db);
                 if (mounted) setStats(s);
-                const p = await db.getFirstAsync('SELECT * FROM profile LIMIT 1');
-                if (mounted) setProfile(p);
-                
+
                 const c = await getApiConfig();
                 if (mounted) {
                     setConfig(c);
@@ -72,13 +69,15 @@ export default function ProfileScreen() {
     const handleResetConfig = async () => {
         Alert.alert('Reiniciar', '¿Volver a la configuración por defecto?', [
             { text: 'Cancelar', style: 'cancel' },
-            { text: 'Reiniciar', style: 'default', onPress: async () => {
-                await resetApiConfig();
-                const c = await getApiConfig();
-                setConfig(c);
-                setTempConfig(c);
-                setShowSettings(false);
-            }},
+            {
+                text: 'Reiniciar', style: 'default', onPress: async () => {
+                    await resetApiConfig();
+                    const c = await getApiConfig();
+                    setConfig(c);
+                    setTempConfig(c);
+                    setShowSettings(false);
+                }
+            },
         ]);
     };
 
@@ -95,9 +94,9 @@ export default function ProfileScreen() {
             'Esto borrará tu información de este dispositivo (nombres, cédula, etc). Deberás registrarte de nuevo. ¿Continuar?',
             [
                 { text: 'Cancelar', style: 'cancel' },
-                { 
-                    text: 'Confirmar Eliminación', 
-                    style: 'destructive', 
+                {
+                    text: 'Confirmar Eliminación',
+                    style: 'destructive',
                     onPress: async () => {
                         try {
                             await clearProfile(db);
@@ -107,7 +106,7 @@ export default function ProfileScreen() {
                         } catch (e) {
                             Alert.alert('Error', 'No se pudo eliminar el perfil');
                         }
-                    } 
+                    }
                 },
             ]
         );
@@ -128,15 +127,15 @@ export default function ProfileScreen() {
                     `Existe una nueva versión: v${updateInfo.version}\n\n${updateInfo.releaseNotes || 'Mejoras de rendimiento y corrección de errores.'}\n\n¿Deseas descargar e instalar ahora?`,
                     [
                         { text: 'Ahora no', style: 'cancel', onPress: () => setUpdating(false) },
-                        { 
-                            text: 'Actualizar', 
+                        {
+                            text: 'Actualizar',
                             onPress: () => {
                                 downloadAndInstallUpdate(updateInfo.downloadUrl, (p) => setUpdateProgress(p))
                                     .finally(() => {
                                         setUpdating(false);
                                         setUpdateProgress(0);
                                     });
-                            } 
+                            }
                         },
                     ]
                 );
@@ -163,9 +162,9 @@ export default function ProfileScreen() {
                 <View style={styles.avatarContainer}>
                     <Ionicons name="person" size={48} color={Colors.primary} />
                 </View>
-                <Text style={styles.userName}>{profile ? `${profile.nombres} ${profile.apellidos}` : (user?.nombre || 'Usuario')}</Text>
-                <Text style={styles.userUsername}>{profile?.email || '-'}</Text>
-                
+                <Text style={styles.userName}>{user?.profile ? `${user.profile.nombres} ${user.profile.apellidos}` : (user?.nombre || 'Usuario')}</Text>
+                <Text style={styles.userUsername}>{user?.profile?.email || '-'}</Text>
+
                 {user?.role && (
                     <View style={styles.roleBadge}>
                         <Ionicons name="shield-checkmark" size={14} color={Colors.white} />
@@ -173,7 +172,7 @@ export default function ProfileScreen() {
                     </View>
                 )}
 
-                {profile && (
+                {user?.profile && (
                     <TouchableOpacity
                         style={styles.editBadge}
                         onPress={() => router.push('/register')}
@@ -208,20 +207,20 @@ export default function ProfileScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Mi Información</Text>
                 <View style={styles.statsCard}>
-                    <InfoRow icon="call-outline" label="Teléfono" value={profile?.telefono || '-'} />
+                    <InfoRow icon="call-outline" label="Teléfono" value={user?.profile?.telefono || '-'} />
                     <View style={styles.divider} />
-                    <InfoRow icon="mail-outline" label="Correo" value={profile?.email || '-'} />
+                    <InfoRow icon="mail-outline" label="Correo" value={user?.profile?.email || '-'} />
                     <View style={styles.divider} />
-                    <InfoRow icon="male-female-outline" label="Sexo" value={profile?.sexo === 'M' ? 'Hombre' : 'Mujer'} />
+                    <InfoRow icon="male-female-outline" label="Sexo" value={!user?.profile ? '-' : (user.profile.sexo === 'M' ? 'Hombre' : 'Mujer')} />
                 </View>
             </View>
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Identificación de Dispositivo</Text>
                 <View style={styles.statsCard}>
-                    <InfoRow icon="phone-portrait-outline" label="Marca / Modelo" value={`${profile?.brand || '-'} / ${profile?.model || '-'}`} />
+                    <InfoRow icon="phone-portrait-outline" label="Marca / Modelo" value={`${user?.profile?.brand || '-'} / ${user?.profile?.model || '-'}`} />
                     <View style={styles.divider} />
-                    <InfoRow icon="hardware-chip-outline" label="ID Sistema" value={profile?.device_id || '-'} />
+                    <InfoRow icon="hardware-chip-outline" label="ID Sistema" value={user?.profile?.device_id || '-'} />
                 </View>
             </View>
 
@@ -238,7 +237,7 @@ export default function ProfileScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Sistema y Actualización</Text>
                 <View style={styles.statsCard}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.settingsItem}
                         onPress={handleCheckUpdates}
                         disabled={updating}
@@ -255,8 +254,8 @@ export default function ProfileScreen() {
                                 {updating ? `Descargando v...` : 'Buscar Actualización'}
                             </Text>
                             <Text style={styles.settingsValue}>
-                                {updating 
-                                    ? `Progreso: ${Math.round(updateProgress * 100)}%` 
+                                {updating
+                                    ? `Progreso: ${Math.round(updateProgress * 100)}%`
                                     : 'Recuerda que estas actualizaciones son fuera de la tienda.'
                                 }
                             </Text>
@@ -266,7 +265,7 @@ export default function ProfileScreen() {
 
                     <View style={styles.divider} />
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.settingsItem}
                         onPress={() => setShowSettings(true)}
                     >
@@ -285,7 +284,7 @@ export default function ProfileScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Acciones de Cuenta</Text>
                 <View style={styles.statsCard}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.settingsItem}
                         onPress={handleLogout}
                     >
@@ -300,7 +299,7 @@ export default function ProfileScreen() {
 
                     <View style={styles.divider} />
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.settingsItem}
                         onPress={handleResetProfile}
                     >
@@ -326,28 +325,28 @@ export default function ProfileScreen() {
                             </TouchableOpacity>
                         </View>
                         <View style={styles.modalGoldLine} />
-                        
+
                         <Text style={styles.settingsHint}>Establece la dirección del servidor y tu clave de API si es diferente a la configurada por defecto.</Text>
-                        
+
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>URL de la API</Text>
-                            <TextInput 
+                            <TextInput
                                 style={styles.textInput}
                                 value={tempConfig.apiUrl}
-                                onChangeText={(v) => setTempConfig({...tempConfig, apiUrl: v})}
+                                onChangeText={(v) => setTempConfig({ ...tempConfig, apiUrl: v })}
                                 placeholder="http://192.168.1.x:3001/api/v1"
                                 placeholderTextColor={Colors.textMuted}
                                 autoCapitalize="none"
                                 autoCorrect={false}
                             />
                         </View>
-                        
+
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>API Key (X-API-Key)</Text>
-                            <TextInput 
+                            <TextInput
                                 style={styles.textInput}
                                 value={tempConfig.apiKey}
-                                onChangeText={(v) => setTempConfig({...tempConfig, apiKey: v})}
+                                onChangeText={(v) => setTempConfig({ ...tempConfig, apiKey: v })}
                                 placeholder="Ingresa la clave de seguridad"
                                 placeholderTextColor={Colors.textMuted}
                                 autoCapitalize="none"
@@ -355,14 +354,14 @@ export default function ProfileScreen() {
                         </View>
 
                         <View style={styles.settingsActions}>
-                            <Button 
-                                title="Reiniciar" 
+                            <Button
+                                title="Reiniciar"
                                 onPress={handleResetConfig}
-                                variant="outline" 
+                                variant="outline"
                                 style={{ flex: 1 }}
                             />
-                            <Button 
-                                title="Guardar Cambios" 
+                            <Button
+                                title="Guardar Cambios"
                                 onPress={handleSaveConfig}
                                 style={{ flex: 2 }}
                                 icon={<Ionicons name="save-outline" size={18} color={Colors.white} />}
