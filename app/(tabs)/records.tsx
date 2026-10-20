@@ -29,31 +29,26 @@ import {
     View,
 } from 'react-native';
 
-/**
- * Mapea un registro de la API (campos en español) a Person (campos en inglés).
- * El backend actual envía `nombre` como nombre completo; lo dejamos en `name`
- * y `last_name` vacío (se puede mejorar cuando el backend envíe ambos).
- */
 function apiToPerson(api: any): Person {
   return {
     id: api.id ?? 0,
-    dni: api.cedula ?? '',
-    name: api.nombre ?? '',
-    last_name: '',
-    phone: api.telefono ?? '',
-    phone_optional: api.telefono_opcional ?? '',
+    dni: api.dni ?? '',
+    name: api.name ?? '',
+    last_name: api.last_name ?? '',
+    phone: api.phone ?? '',
+    phone_optional: api.phone_optional ?? '',
     email: api.email ?? '',
-    address: api.direccion ?? '',
-    parish: api.sector_barrio ?? '',
-    address_reference: api.punto_referencia ?? '',
-    gender: api.genero ?? 'M',
-    birthday_date: api.fecha_nacimiento ?? '',
-    comments: '',
-    visit_day: '',
-    visit_time: '',
-    registrant_dni: api.registrant_id ?? null,
+    address: api.address ?? '',
+    parish: api.parish ?? '',
+    address_reference: api.address_reference ?? '',
+    gender: api.gender ?? 'M',
+    birthday_date: api.birthday_date ?? '',
+    comments: api.comments ?? '',
+    visit_day: api.visit_day ?? '',
+    visit_time: api.visit_time ?? '',
+    registrant_dni: api.registrant_dni || null,
     synced: 1,
-    created_at: api.created_at ?? '',
+    created_at: api.received_at ?? api.created_at ?? '',
   };
 }
 

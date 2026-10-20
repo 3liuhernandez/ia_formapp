@@ -44,13 +44,12 @@ export async function syncPendingRecords(
                         'X-API-Key': apiKey,
                     },
                     body: JSON.stringify({
-                        // mapper profile → español (ajusta según tu backend)
-                        cedula: profile.dni,
-                        nombres: profile.name,
-                        apellidos: profile.last_name,
-                        telefono: profile.phone,
+                        dni: profile.dni,
+                        name: profile.name,
+                        last_name: profile.last_name,
+                        phone: profile.phone,
                         email: profile.email,
-                        sexo: profile.gender,
+                        gender: profile.gender,
                         brand: profile.brand,
                         model: profile.model,
                         os_version: profile.os_version,

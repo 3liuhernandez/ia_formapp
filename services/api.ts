@@ -8,21 +8,29 @@ interface ApiResponse {
     data?: any;
 }
 
-/** Mapea Person (DB inglés) → payload API (español). */
+/**
+ * El server ahora usa los mismos nombres que la app.
+ * Solo excluimos campos que el server no conoce (`id`, `synced`).
+ */
 export function personToApiPayload(p: Person) {
-    return {
-        nombre: p.name,
-        cedula: p.dni,
-        telefono: p.phone,
-        telefono_opcional: p.phone_optional,
-        email: p.email,
-        direccion: p.address,
-        punto_referencia: p.address_reference,
-        sector_barrio: p.parish,
-        fecha_nacimiento: p.birthday_date,
-        genero: p.gender,
-        registrant_id: p.registrant_dni || '',
-    };
+  return {
+    dni: p.dni,
+    name: p.name,
+    last_name: p.last_name,
+    phone: p.phone,
+    phone_optional: p.phone_optional,
+    email: p.email,
+    address: p.address,
+    parish: p.parish,
+    address_reference: p.address_reference,
+    gender: p.gender,
+    birthday_date: p.birthday_date,
+    comments: p.comments,
+    visit_day: p.visit_day,
+    visit_time: p.visit_time,
+    registrant_dni: p.registrant_dni || '',
+    created_at: p.created_at,   // ← preserva el timestamp real del cliente
+  };
 }
 
 async function request(endpoint: string, options: RequestInit = {}): Promise<ApiResponse> {
