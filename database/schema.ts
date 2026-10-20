@@ -1,109 +1,70 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { LATEST_VERSION, migrations } from './migrations';
 
 export async function initializeDatabase(db: SQLiteDatabase): Promise<void> {
-  const latestVersion = 1;
-  const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+
+  // ************************************************************ //
+  // Temporal, solo en dev — pega esto antes de initializeDatabase
+  if (__DEV__) {
+    // await db.execAsync('PRAGMA user_version = 1;'); // ← finge que venía de v1
+  }
+  // await initializeDatabase(db);
+  // ************************************************************ //
+
+  // ************************************************************ //
+    // 🧪 Técnica C — Borrar la DB y empezar de cero
+    // Para verificar que un fresh install corre todas las migraciones en orden:
+
+    if (__DEV__) {
+      // await SQLite.deleteDatabaseAsync('app.db');
+    }
+  // ************************************************************ //
+
+
+  // foreign_keys siempre OFF durante migraciones (SQLite lo exige para ALTER)
+  await db.execAsync(`
+    PRAGMA journal_mode = 'delete';
+    PRAGMA foreign_keys = OFF;
+  `);
+
+  const version = await db.getFirstAsync<{ user_version: number }>(
+    'PRAGMA user_version'
+  );
+
   const currentVersion = version?.user_version ?? 0;
 
-  console.log(`[DB] Version actual: ${currentVersion} | latestVersion: ${latestVersion}`);
-  if (currentVersion >= latestVersion) return;
+  console.log(
+    `[DB] Versión actual: ${currentVersion} | latest: ${LATEST_VERSION}`
+  );
 
-  console.log(`[DB] Inicializando base de datos (v${currentVersion} -> v${latestVersion})...`);
-
-  try {
-
-    // Solo para dev: borra todas las tablas y vuelve a inicializar
-    await db.execAsync(`
-      PRAGMA foreign_keys = OFF;
-      DROP TABLE IF EXISTS people;
-      DROP TABLE IF EXISTS user;
-      DROP TABLE IF EXISTS profile;
-      PRAGMA user_version = 0;
-      PRAGMA foreign_keys = ON;
-    `);
-
-    await db.execAsync(`
-      PRAGMA journal_mode = 'delete';
-      PRAGMA foreign_keys = ON;
-
-      -- ────────────────────────────────────────────────────────
-      -- PROFILE (datos personales / dispositivo del usuario)
-      -- ────────────────────────────────────────────────────────
-      CREATE TABLE IF NOT EXISTS profile (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        dni           INTEGER UNIQUE,
-        name          TEXT NOT NULL,
-        last_name     TEXT NOT NULL,
-        phone         TEXT NOT NULL,
-        email         TEXT DEFAULT '',
-        gender        TEXT DEFAULT 'M',
-        brand         TEXT DEFAULT '',
-        model         TEXT DEFAULT '',
-        os_version    TEXT DEFAULT '',
-        device_id     TEXT DEFAULT '',
-        synced        INTEGER DEFAULT 0
-      );
-
-      -- ────────────────────────────────────────────────────────
-      -- USER (autenticación)
-      -- ────────────────────────────────────────────────────────
-      CREATE TABLE IF NOT EXISTS user (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        username      TEXT NOT NULL UNIQUE,
-        password      TEXT NOT NULL,
-        name          TEXT NOT NULL,
-        role_id       INTEGER NOT NULL DEFAULT 1,
-        role_name     TEXT NOT NULL DEFAULT 'register'
-                        CHECK (role_name IN ('register','admin')),
-        profile_dni   INTEGER,
-        token         TEXT,
-        expires_at    TEXT,
-        created_at    TEXT DEFAULT (datetime('now','localtime')),
-        updated_at    TEXT DEFAULT (datetime('now','localtime')),
-        FOREIGN KEY (profile_dni) REFERENCES profile(dni) ON DELETE SET NULL
-      );
-
-      -- ────────────────────────────────────────────────────────
-      -- PEOPLE (personas registradas)
-      -- ────────────────────────────────────────────────────────
-      CREATE TABLE IF NOT EXISTS people (
-        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-        dni                INTEGER NOT NULL,
-        name               TEXT NOT NULL,
-        last_name          TEXT NOT NULL DEFAULT '',
-        phone              TEXT NOT NULL,
-        phone_optional     TEXT DEFAULT '',
-        email              TEXT DEFAULT '',
-        address            TEXT DEFAULT '',
-        parish             TEXT DEFAULT '',
-        address_reference  TEXT DEFAULT '',
-        gender             TEXT DEFAULT 'M',
-        birthday_date      TEXT DEFAULT '',
-        comments           TEXT DEFAULT '',
-        visit_day          TEXT DEFAULT '',
-        visit_time         TEXT DEFAULT '',
-        registrant_dni     INTEGER,
-        synced             INTEGER DEFAULT 0,
-        created_at         TEXT DEFAULT (datetime('now','localtime')),
-        FOREIGN KEY (registrant_dni) REFERENCES profile(dni) ON DELETE SET NULL
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_people_dni            ON people(dni);
-      CREATE INDEX IF NOT EXISTS idx_people_registrant_dni ON people(registrant_dni);
-      CREATE INDEX IF NOT EXISTS idx_people_synced         ON people(synced);
-
-      -- ────────────────────────────────────────────────────────
-      -- Usuario admin por defecto
-      -- ────────────────────────────────────────────────────────
-      INSERT OR REPLACE INTO user (username, password, name, role_name, profile_dni)
-      VALUES ('admin', 'admin123', 'Servidor', 'admin', 1);
-
-      PRAGMA user_version = ${latestVersion};
-    `);
-
-    console.log(`[DB] Inicialización completada exitosamente v${latestVersion}`);
-  } catch (error) {
-    console.error('[DB] CRITICAL: Falló la inicialización:', error);
-    throw error;
+  if (currentVersion >= LATEST_VERSION) {
+    await db.execAsync('PRAGMA foreign_keys = ON;');
+    return;
   }
+
+  // Migraciones pendientes, en orden
+  const pending = migrations
+  .filter((m) => m.version > currentVersion)
+  .sort((a, b) => a.version - b.version);
+
+  for (const m of pending) {
+    console.log(`[DB] Migrando v${m.version} → ${m.name}...`);
+    try {
+      await db.withTransactionAsync(async () => {
+        await m.up(db);
+        // user_version se escribe dentro de la misma transacción
+        // para que sea atómico con el cambio de esquema
+        await db.execAsync(`PRAGMA user_version = ${m.version};`);
+      });
+      console.log(`[DB] ✔ v${m.version} aplicada`);
+    } catch (error) {
+      console.error(`[DB] ✖ Falló migración v${m.version}:`, error);
+      throw error; // aborta todo; la app no debe seguir con DB inconsistente
+    }
+  }
+
+    await db.execAsync('PRAGMA foreign_keys = ON;');
+
+    console.log(`[DB] Migraciones completadas. Versión final: ${LATEST_VERSION}`);
+
 }

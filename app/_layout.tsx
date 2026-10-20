@@ -1,4 +1,5 @@
-import { Colors, FontSize } from '@/constants/theme';
+import { DatabaseErrorScreen } from '@/components/DatabaseErrorScreen';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { initializeDatabase } from '@/database/schema';
 import { registerBackgroundSync } from '@/services/backgroundSync';
@@ -7,43 +8,28 @@ import { syncPendingRecords } from '@/services/sync';
 import { Stack } from 'expo-router';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import React, { Suspense } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import React, { Suspense, useCallback, useState } from 'react';
 
-// Start network monitoring and background sync at app level
-// Network monitor start is ok, but listener with sync should be inside provider
 startNetworkMonitor();
 registerBackgroundSync().catch(console.error);
 
-function LoadingScreen() {
-  return (
-    <View style={styles.loading}>
-      <ActivityIndicator size="large" color={Colors.primary} />
-      <Text style={styles.loadingText}>Cargando...</Text>
-    </View>
-  );
-}
 
 function RootNavigation() {
   const { user, hasProfile, isLoading } = useAuth();
   const db = useSQLiteContext();
 
-  // Auto-sync when connection is restored, using context DB
   React.useEffect(() => {
-    const removeListener = addNetworkListener((isConnected) => {
+    const remove = addNetworkListener((isConnected) => {
       if (isConnected && db) {
-        console.log('[App] Conexión detectada, sincronizando desde contexto...');
         syncPendingRecords(db).catch(console.error);
       }
     });
     return () => {
-      if (typeof removeListener === 'function') removeListener();
+      if (typeof remove === 'function') remove();
     };
   }, [db]);
 
-  if (isLoading || hasProfile === null) {
-    return <LoadingScreen />;
-  }
+  if (isLoading || hasProfile === null) return <LoadingScreen />;
 
   if (hasProfile === false) {
     return (
@@ -64,40 +50,60 @@ function RootNavigation() {
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="register" options={{ headerShown: true, title: 'Editar Perfil', presentation: 'modal' }} />
+        {/* <Stack.Screen name="(tabs)" /> */}
+        <Stack.Screen
+          name="register"
+          options={{ headerShown: true, title: 'Editar Perfil', presentation: 'modal' }}
+        />
       </Stack>
       <StatusBar style="dark" />
     </>
   );
 }
 
-export default function RootLayout() {
+function DatabaseBootstrap({ children }: { children: React.ReactNode }) {
+  const [dbError, setDbError] = useState<Error | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const onInit = useCallback(async (db: Parameters<typeof initializeDatabase>[0]) => {
+    try {
+      await initializeDatabase(db);
+      // if (__DEV__) await seedDatabase(db);
+    } catch (e) {
+      console.error('[DB] onInit falló:', e);
+      setDbError(e as Error);   // ← NO rethrow
+    }
+  }, []);
+
+  const retry = useCallback(() => {
+    setDbError(null);
+    setAttempt((a) => a + 1);
+  }, []);
+
   return (
-    <Suspense fallback={<LoadingScreen />}>
-      <SQLiteProvider
-        databaseName="app_v3.db"
-        onInit={initializeDatabase}
-        useSuspense={false}
-      >
-        <AuthProvider>
-          <RootNavigation />
-        </AuthProvider>
-      </SQLiteProvider>
-    </Suspense>
+    <SQLiteProvider
+      key={attempt}
+      databaseName="app.db"
+      onInit={onInit}
+      useSuspense={false}
+    >
+      {dbError ? (
+        <DatabaseErrorScreen error={dbError} onRetry={retry} />
+      ) : (
+        children
+      )}
+    </SQLiteProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    gap: 16,
-  },
-  loadingText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-  },
-});
+export default function RootLayout() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <DatabaseBootstrap>
+        <AuthProvider>
+          <RootNavigation />
+        </AuthProvider>
+      </DatabaseBootstrap>
+    </Suspense>
+  );
+}
