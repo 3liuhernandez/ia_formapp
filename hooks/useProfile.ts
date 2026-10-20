@@ -1,7 +1,7 @@
 import {
-    profileRepo,
-    type Profile,
-    type ProfileInput,
+  profileRepo,
+  type Profile,
+  type ProfileInput,
 } from '@/database/repositories/profile.repository';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useState } from 'react';
@@ -28,10 +28,10 @@ export function useProfile() {
   }, [db]);
 
   const save = useCallback(
-    async (data: ProfileInput) => {
-      const id = await profileRepo.upsert(db, data);
+    async (data: ProfileInput): Promise<Profile | null> => {
+      await profileRepo.upsert(db, data);
       await refresh();
-      return id;
+      return profileRepo.get(db);   // ← devuelve el Profile completo
     },
     [db, refresh]
   );

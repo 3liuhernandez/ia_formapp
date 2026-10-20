@@ -1,6 +1,6 @@
+import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
-import Constants from 'expo-constants';
 import { Alert, Platform } from 'react-native';
 import { getApiConfig } from './settings';
 
@@ -21,7 +21,7 @@ export async function checkForUpdates(): Promise<UpdateInfo | null> {
         
         // NOTA: Debes tener este endpoint en tu servidor que devuelva JSON con la versión
         const response = await fetch(`${base}/updates/latest`, {
-            headers: { 
+            headers: {
                 'X-API-Key': apiKey,
                 'Accept': 'application/json'
             }

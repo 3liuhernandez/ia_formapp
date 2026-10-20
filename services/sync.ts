@@ -1,6 +1,6 @@
-import { getUnsyncedPersonas, markAsSynced, getUnsyncedProfile, markProfileAsSynced } from '@/database/operations';
-import { initializeDatabase } from '@/database/schema';
-import { sendPersonaToApi } from '@/services/api';
+import { peopleRepo } from '@/database/repositories/people.repository';
+import { profileRepo } from '@/database/repositories/profile.repository';
+import { sendPersonToApi } from '@/services/api';
 import { isOnline } from '@/services/network';
 import { getApiConfig } from '@/services/settings';
 import * as SQLite from 'expo-sqlite';
@@ -8,15 +8,12 @@ import * as SQLite from 'expo-sqlite';
 let isSyncing = false;
 
 async function getBackgroundDb(): Promise<SQLite.SQLiteDatabase> {
-    const db = await SQLite.openDatabaseAsync('app_v3.db');
-    try { await initializeDatabase(db); } catch (e) {}
-    return db;
+    return SQLite.openDatabaseAsync('app.db');   // ← ✅ mismo que el provider
 }
 
-export async function syncPendingRecords(dbParam?: SQLite.SQLiteDatabase): Promise<{
-    synced: number;
-    failed: number;
-}> {
+export async function syncPendingRecords(
+    dbParam?: SQLite.SQLiteDatabase
+): Promise<{ synced: number; failed: number }> {
     if (isSyncing) {
         console.log('[Sync] Ya hay una sincronización en progreso');
         return { synced: 0, failed: 0 };
@@ -30,11 +27,12 @@ export async function syncPendingRecords(dbParam?: SQLite.SQLiteDatabase): Promi
     let failedCount = 0;
 
     try {
-        const db = dbParam || await getBackgroundDb();
-        // 1. Sync Profile first
-        const unsyncedProfile = await getUnsyncedProfile(db);
-        if (unsyncedProfile) {
-            console.log(`[Sync] Sincronizando perfil de ${unsyncedProfile.cedula}...`);
+        const db = dbParam || (await getBackgroundDb());
+
+        // 1. Sync perfil si está pendiente
+        const profile = await profileRepo.get(db);
+        if (profile && profile.synced === 0) {
+            console.log(`[Sync] Sincronizando perfil de ${profile.dni}...`);
             try {
                 const { apiUrl, apiKey } = await getApiConfig();
                 const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
@@ -45,10 +43,22 @@ export async function syncPendingRecords(dbParam?: SQLite.SQLiteDatabase): Promi
                         'Content-Type': 'application/json',
                         'X-API-Key': apiKey,
                     },
-                    body: JSON.stringify(unsyncedProfile),
+                    body: JSON.stringify({
+                        // mapper profile → español (ajusta según tu backend)
+                        cedula: profile.dni,
+                        nombres: profile.name,
+                        apellidos: profile.last_name,
+                        telefono: profile.phone,
+                        email: profile.email,
+                        sexo: profile.gender,
+                        brand: profile.brand,
+                        model: profile.model,
+                        os_version: profile.os_version,
+                        device_id: profile.device_id,
+                    }),
                 });
                 if (response.ok) {
-                    await markProfileAsSynced(db, unsyncedProfile.cedula);
+                    await profileRepo.markSynced(db, profile.id);
                     console.log('[Sync] ✓ Perfil sincronizado');
                 }
             } catch (err) {
@@ -56,8 +66,8 @@ export async function syncPendingRecords(dbParam?: SQLite.SQLiteDatabase): Promi
             }
         }
 
-        const pending = await getUnsyncedPersonas(db);
-
+        // 2. Sync personas
+        const pending = await peopleRepo.listPendingSync(db);
         if (pending.length === 0) {
             console.log('[Sync] No hay registros pendientes');
             return { synced: 0, failed: 0 };
@@ -65,43 +75,26 @@ export async function syncPendingRecords(dbParam?: SQLite.SQLiteDatabase): Promi
 
         console.log(`[Sync] Sincronizando ${pending.length} registros...`);
 
-        for (const persona of pending) {
+        for (const person of pending) {
             try {
-                const result = await sendPersonaToApi({
-                    nombre: persona.nombre,
-                    cedula: persona.cedula,
-                    edad: persona.edad,
-                    telefono: persona.telefono,
-                    telefono_opcional: persona.telefono_opcional,
-                    email: persona.email,
-                    direccion: persona.direccion,
-                    punto_referencia: persona.punto_referencia,
-                    sector_barrio: persona.sector_barrio,
-                    fecha_nacimiento: persona.fecha_nacimiento,
-                    genero: persona.genero,
-                    registrant_id: persona.registrant_id || '',
-                });
-
+                const result = await sendPersonToApi(person);
                 if (result.success) {
-                    await markAsSynced(db, persona.id);
+                    await peopleRepo.markSynced(db, [person.id]);
                     syncedCount++;
-                    console.log(`[Sync] ✓ Registro #${persona.id} sincronizado`);
+                    console.log(`[Sync] ✓ Registro #${person.id} sincronizado`);
                 } else {
                     failedCount++;
-                    console.log(`[Sync] ✗ Registro #${persona.id}: ${result.message}`);
+                    console.log(`[Sync] ✗ Registro #${person.id}: ${result.message}`);
                 }
             } catch (err) {
                 failedCount++;
-                console.log(`[Sync] ✗ Error con registro #${persona.id}:`, err);
+                console.log(`[Sync] ✗ Error con registro #${person.id}:`, err);
             }
         }
 
-        console.log(`[Sync] Completado: ${syncedCount} sincronizados, ${failedCount} fallidos`);
+        console.log(`[Sync] Completado: ${syncedCount} ok, ${failedCount} fallidos`);
     } catch (error: any) {
         console.error('[Sync] Error general:', error);
-        // Add more detail for production debugging
-        const apiBase = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-        console.error(`[Sync] Configured API: ${apiBase}. Error: ${error.message}`);
     } finally {
         isSyncing = false;
     }

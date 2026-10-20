@@ -1,62 +1,21 @@
-export interface Persona {
-    id: number;
-    nombre: string;
-    cedula: string;
-    edad: string;
-    telefono: string;
-    telefono_opcional: string;
-    email: string;
-    direccion: string;
-    punto_referencia: string;
-    sector_barrio: string;
-    fecha_nacimiento: string;
-    genero: 'M' | 'F';
-    synced: number; // 0 = pendiente, 1 = sincronizado
-    created_at: string;
-    registrant_id?: string;
-}
+import type { Profile } from '@/database/repositories/profile.repository';
 
-export interface Profile {
-    cedula: string;
-    nombres: string;
-    apellidos: string;
-    telefono: string;
-    email?: string;
-    sexo?: 'M' | 'F';
-    brand?: string;
-    model?: string;
-    os_version?: string;
-    device_id?: string;
-    synced?: number;
-}
-
-export interface PersonaInput {
-    nombre: string;
-    cedula: string;
-    edad: string;
-    telefono: string;
-    telefono_opcional: string;
-    email: string;
-    direccion: string;
-    punto_referencia: string;
-    sector_barrio: string;
-    fecha_nacimiento: string;
-    genero: 'M' | 'F';
-    registrant_id?: string;
-}
-
+/**
+ * Usuario en sesión (SecureStore). NO es la fila de la DB.
+ * Derivado de UserRow al hacer login, + Profile adjunto.
+ */
 export interface User {
-    id: number;
-    username: string;
-    nombre: string;
-    role?: number; // 1: servidor, 2: coordinador, 3: admin
-    profile?: Profile;
-    token?: string;
-    expiresAt?: number; // Timestamp
+  id: number;
+  username: string;
+  name: string;                  // ← antes `nombre`
+  role: 'register' | 'admin';    // ← antes `role: number`
+  profile?: Profile | null;
+  token?: string;
+  expiresAt?: number;            // timestamp en ms
 }
 
 export interface SyncStats {
-    total: number;
-    synced: number;
-    pending: number;
+  total: number;
+  synced: number;
+  pending: number;
 }

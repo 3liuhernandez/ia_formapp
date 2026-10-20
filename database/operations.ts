@@ -145,36 +145,6 @@ export async function searchPersonas(db: SQLiteDatabase, query: string): Promise
 // USER OPERATIONS
 // ========================
 
-export async function authenticateUser(
-    db: SQLiteDatabase,
-    username: string,
-    password: string
-): Promise<User | null> {
-    console.log(`[DB] Intentando autenticar usuario: ${username}`);
-    try {
-        const user = await db.getFirstAsync<User & { password: string }>(
-            'SELECT * FROM users WHERE username = ?',
-            [username]
-        );
-
-        if (!user) {
-            console.log('[DB] Usuario no encontrado localmente');
-            return null;
-        }
-
-        if (user.password !== password) {
-            console.log('[DB] Contraseña incorrecta para el usuario:', username);
-            return null;
-        }
-
-        console.log('[DB] Autenticación local exitosa para:', username);
-        return { id: user.id, username: user.username, nombre: user.nombre, role: user.role };
-    } catch (e) {
-        console.error('[DB] Error en authenticateUser:', e);
-        return null;
-    }
-}
-
 export async function getUserById(db: SQLiteDatabase, id: number): Promise<User | null> {
     return await db.getFirstAsync<User>(
         'SELECT id, username, nombre, role FROM users WHERE id = ?',
@@ -197,27 +167,6 @@ export async function updateUserPassword(
 export async function getProfile(db: SQLiteDatabase): Promise<any> {
     return await db.getFirstAsync<any>('SELECT * FROM profile LIMIT 1');
 }
-
-export async function saveProfile(db: SQLiteDatabase, profile: any): Promise<void> {
-    await db.runAsync(
-        `INSERT OR REPLACE INTO profile (cedula, nombres, apellidos, telefono, email, sexo, brand, model, os_version, device_id, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-            profile.cedula ?? '',
-            profile.nombres ?? '',
-            profile.apellidos ?? '',
-            profile.telefono ?? '',
-            profile.email ?? '',
-            profile.sexo ?? 'M',
-            profile.brand ?? '',
-            profile.model ?? '',
-            profile.os_version ?? '',
-            profile.device_id ?? '',
-            profile.synced ?? 0,
-        ]
-    );
-}
-
 
 export async function getUnsyncedProfile(db: SQLiteDatabase): Promise<any | null> {
     return await db.getFirstAsync('SELECT * FROM profile WHERE synced = 0 LIMIT 1');

@@ -100,4 +100,61 @@ export const peopleRepo = {
     await db.runAsync('DELETE FROM people WHERE id = ?', [id]);
   },
 
+    // Últimas 24h de un registrante específico
+  async getByRegistrantRecent(
+    db: SQLiteDatabase,
+    registrantDni: string,
+    hours = 24
+  ): Promise<Person[]> {
+    return db.getAllAsync<Person>(
+      `SELECT * FROM people
+       WHERE registrant_dni = ?
+         AND created_at >= datetime('now','localtime', ?)
+       ORDER BY created_at DESC`,
+      [registrantDni, `-${hours} hours`]
+    );
+  },
+
+  // Rango de fechas (YYYY-MM-DD)
+  async getByDateRange(
+    db: SQLiteDatabase,
+    from: string,
+    to: string
+  ): Promise<Person[]> {
+    return db.getAllAsync<Person>(
+      `SELECT * FROM people
+       WHERE date(created_at) BETWEEN date(?) AND date(?)
+       ORDER BY created_at DESC`,
+      [from, to]
+    );
+  },
+
+  // Stats con filtro opcional por registrant + ventana de 24h
+  async getStats(
+    db: SQLiteDatabase,
+    opts?: { registrantDni?: string; only24h?: boolean }
+  ): Promise<{ total: number; synced: number; pending: number }> {
+    const clauses: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (opts?.registrantDni) {
+      clauses.push('registrant_dni = ?');
+      params.push(opts.registrantDni);
+    }
+    if (opts?.only24h) {
+      clauses.push(`created_at >= datetime('now','localtime','-24 hours')`);
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+    const row = await db.getFirstAsync<{ total: number; synced: number }>(
+      `SELECT COUNT(*) as total,
+              COALESCE(SUM(CASE WHEN synced = 1 THEN 1 ELSE 0 END), 0) as synced
+       FROM people ${where}`,
+      params
+    );
+    const total = row?.total ?? 0;
+    const synced = row?.synced ?? 0;
+    return { total, synced, pending: total - synced };
+  },
+
 };
