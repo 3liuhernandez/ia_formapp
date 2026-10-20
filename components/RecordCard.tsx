@@ -1,29 +1,29 @@
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
-import type { Persona } from '@/types';
+import { type Person } from '@/database/repositories/people.repository';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface RecordCardProps {
-    persona: Persona;
+    person: Person;
     onDelete?: (id: number) => void;
-    onPress?: (persona: Persona) => void;
+    onPress?: (person: Person) => void;
 }
 
-export function RecordCard({ persona, onDelete, onPress }: RecordCardProps) {
-    const isSynced = persona.synced === 1;
+export function RecordCard({ person, onDelete, onPress }: RecordCardProps) {
+    const isSynced = person.synced === 1;
 
     return (
         <TouchableOpacity
             style={styles.card}
-            onPress={() => onPress?.(persona)}
+            onPress={() => onPress?.(person)}
             activeOpacity={onPress ? 0.7 : 1}
         >
             <View style={styles.header}>
                 <View style={styles.nameRow}>
                     <Ionicons name="person" size={18} color={Colors.primary} />
                     <Text style={styles.name} numberOfLines={1}>
-                        {persona.nombre}
+                        {person.name} {person.last_name}
                     </Text>
                 </View>
                 <View style={[styles.badge, isSynced ? styles.badgeSynced : styles.badgePending]}>
@@ -39,18 +39,18 @@ export function RecordCard({ persona, onDelete, onPress }: RecordCardProps) {
             </View>
 
             <View style={styles.details}>
-                <DetailRow icon="card" label="Cédula" value={persona.cedula} />
-                <DetailRow icon="call" label="Tel" value={persona.telefono} />
+                <DetailRow icon="card" label="Cédula" value={person.dni} />
+                <DetailRow icon="call" label="Tel" value={person.phone} />
             </View>
 
             <View style={styles.footer}>
                 <Text style={styles.date}>
                     <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />{' '}
-                    {persona.created_at}
+                    {person.created_at}
                 </Text>
                 <View style={styles.footerActions}>
                     <TouchableOpacity
-                        onPress={() => onPress?.(persona)}
+                        onPress={() => onPress?.(person)}
                         style={styles.actionBtn}
                         activeOpacity={0.7}
                     >
@@ -58,7 +58,7 @@ export function RecordCard({ persona, onDelete, onPress }: RecordCardProps) {
                     </TouchableOpacity>
                     {onDelete && (
                         <TouchableOpacity
-                            onPress={() => onDelete(persona.id)}
+                            onPress={() => onDelete(person.id)}
                             style={styles.actionBtn}
                             activeOpacity={0.7}
                         >

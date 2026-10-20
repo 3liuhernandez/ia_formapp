@@ -50,7 +50,7 @@ function RootNavigation() {
   return (
     <>
       <Stack screenOptions={{ headerShown: false }}>
-        {/* <Stack.Screen name="(tabs)" /> */}
+        <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="register"
           options={{ headerShown: true, title: 'Editar Perfil', presentation: 'modal' }}
