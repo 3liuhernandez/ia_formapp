@@ -3,8 +3,9 @@ import {
   type Profile,
   type ProfileInput,
 } from '@/database/repositories/profile.repository';
+import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 export function useProfile() {
   const db = useSQLiteContext();
@@ -45,9 +46,11 @@ export function useProfile() {
     [db, profile, refresh]
   );
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   return { profile, hasProfile, loading, error, refresh, save, update };
 }
