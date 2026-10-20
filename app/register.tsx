@@ -2,6 +2,7 @@ import { Button } from '@/components/Button';
 import { FormInput } from '@/components/FormInput';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { Profile } from '@/database/repositories/profile.repository';
 import { useProfile } from '@/hooks/useProfile';
 import { getApiConfig } from '@/services/settings';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,9 +42,14 @@ const EMPTY_FORM: FormState = {
   gender: 'M',
 };
 
+function coerceString(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  return String(v);
+}
+
 export default function RegisterScreen() {
   const router = useRouter();
-  const { user, refreshHasProfile, updateUserProfile } = useAuth();
+  const { refreshHasProfile, updateUserProfile } = useAuth();
   const { profile, loading: profileLoading, save } = useProfile();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -56,12 +62,12 @@ export default function RegisterScreen() {
     if (!profile) return;
     setIsEditing(true);
     setForm({
-      dni: profile.dni ?? '',
-      name: profile.name,
-      last_name: profile.last_name,
-      phone: profile.phone,
-      email: profile.email,
-      gender: profile.gender,
+      dni: coerceString(profile.dni),
+      name: coerceString(profile.name),
+      last_name: coerceString(profile.last_name),
+      phone: coerceString(profile.phone),
+      email: coerceString(profile.email),
+      gender: coerceString(profile.gender) || 'M',
     });
   }, [profile]);
 
@@ -100,67 +106,109 @@ export default function RegisterScreen() {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.dni.trim()) e.dni = 'La cédula es requerida';
-    if (!form.name.trim()) e.name = 'El nombre es requerido';
-    if (!form.last_name.trim()) e.last_name = 'El apellido es requerido';
-    if (!form.phone.trim()) e.phone = 'El teléfono es requerido';
+    if (!isEditing && !coerceString(form.dni).trim()) {
+      e.dni = 'La cédula es requerida';
+    }
+    if (!coerceString(form.name).trim()) e.name = 'El nombre es requerido';
+    if (!coerceString(form.last_name).trim()) e.last_name = 'El apellido es requerido';
+    if (!coerceString(form.phone).trim()) e.phone = 'El teléfono es requerido';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleRegister = async () => {
+  async function handleCreate() {
+    const saved = await save({
+      dni: coerceString(form.dni).trim() || null,
+      name: coerceString(form.name).trim(),
+      last_name: coerceString(form.last_name).trim(),
+      phone: coerceString(form.phone).trim(),
+      email: coerceString(form.email).trim(),
+      gender: coerceString(form.gender) || 'M',
+      brand: Device.brand || '',
+      model: Device.modelName || '',
+      os_version: Device.osVersion || '',
+      device_id: Device.osBuildId || '',
+    });
+
+    // Sync con API (fire-and-forget)
+    syncProfileToApi(saved).catch((e) =>
+      console.warn('[Register] API sync falló (se reintentará):', e)
+    );
+
+    await refreshHasProfile();
+    Alert.alert('¡Éxito!', 'Perfil configurado correctamente.');
+    // RootNavigation detecta hasProfile=true y muestra /login
+  }
+
+  async function handleEdit() {
+    const saved = await save({
+      dni: coerceString(form.dni).trim() || null,
+      name: coerceString(form.name).trim(),
+      last_name: coerceString(form.last_name).trim(),
+      phone: coerceString(form.phone).trim(),
+      email: coerceString(form.email).trim(),
+      gender: coerceString(form.gender) || 'M',
+      brand: Device.brand || '',
+      model: Device.modelName || '',
+      os_version: Device.osVersion || '',
+      device_id: Device.osBuildId || '',
+    });
+
+    // Sync con API (fire-and-forget)
+    syncProfileToApi(saved).catch((e) =>
+      console.warn('[Register] API sync falló (se reintentará):', e)
+    );
+
+    if (saved) await updateUserProfile(saved);
+    Alert.alert('Éxito', 'Perfil actualizado correctamente');
+    router.back();
+  }
+
+  async function syncProfileToApi(saved: Profile | null) {
+    if (!saved) return;
+    const { apiUrl, apiKey } = await getApiConfig();
+    const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    await fetch(`${base}/registrants`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+      },
+      body: JSON.stringify({
+        dni: saved.dni,
+        name: saved.name,
+        last_name: saved.last_name,
+        phone: saved.phone,
+        email: saved.email,
+        gender: saved.gender,
+        brand: saved.brand,
+        model: saved.model,
+        os_version: saved.os_version,
+        device_id: saved.device_id,
+      }),
+    });
+  }
+
+  async function handleRegister() {
     if (!validate()) return;
     setLoading(true);
-
     try {
-      // 1. Guardar localmente vía hook (hace upsert + refresh interno)
-      const saved = await save({
-        dni: form.dni.trim() || null,
-        name: form.name.trim(),
-        last_name: form.last_name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        gender: form.gender,
-        brand: Device.brand || '',
-        model: Device.modelName || '',
-        os_version: Device.osVersion || '',
-        device_id: Device.osBuildId || '',
-      });
-
-      // 2. Sync con API (fire-and-forget; si falla, se reintenta después)
-      try {
-        const { apiUrl, apiKey } = await getApiConfig();
-        const base = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-        await fetch(`${base}/registrants`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': apiKey,
-          },
-          body: JSON.stringify(saved),
-        });
-      } catch (apiError) {
-        console.warn('[Register] API sync falló, se reintentará:', apiError);
-      }
-
-      // 3. Post-save
       if (isEditing) {
-        // Actualiza el snapshot del usuario en SecureStore
-        if (saved) await updateUserProfile(saved);
-        Alert.alert('Éxito', 'Perfil actualizado correctamente');
-        router.back();
+        await handleEdit();
       } else {
-        // Al marcar hasProfile=true, RootNavigation cambia a /login automáticamente
-        await refreshHasProfile();
-        Alert.alert('¡Éxito!', 'Perfil configurado correctamente.');
+        await handleCreate();
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'No se pudo completar el registro.');
+      console.error('[Register] Error guardando perfil:', error);
+      Alert.alert(
+        'Error',
+        `No se pudo ${isEditing ? 'actualizar' : 'crear'} el perfil: ${error instanceof Error ? error.message : 'desconocido'
+        }`
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (profileLoading) {
     return (
@@ -289,61 +337,61 @@ export default function RegisterScreen() {
 // ... styles sin cambios
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
-    loadingText: { marginTop: Spacing.md, color: Colors.textSecondary, fontSize: FontSize.md },
-    scroll: { padding: Spacing.xl, paddingTop: 60 },
-    header: { alignItems: 'center', marginBottom: Spacing.xl },
-    title: { fontSize: 28, fontWeight: '800', color: Colors.primary, marginTop: Spacing.sm },
-    subtitle: { fontSize: 16, color: Colors.textSecondary, marginTop: 4 },
-    card: {
-        backgroundColor: Colors.white,
-        padding: Spacing.lg,
-        borderRadius: BorderRadius.xl,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 5
-    },
-    genderSection: { marginBottom: Spacing.lg },
-    label: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 8 },
-    genderRow: { flexDirection: 'row', gap: Spacing.md },
-    genderBtn: {
-        flex: 1, padding: Spacing.md, borderRadius: BorderRadius.md,
-        borderWidth: 1, borderColor: Colors.cardBorder, alignItems: 'center'
-    },
-    genderBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-    genderText: { fontWeight: '600', color: Colors.textSecondary },
-    genderTextActive: { color: Colors.white },
-    btn: { marginTop: Spacing.md },
-    cancelLink: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.sm },
-    cancelText: { color: Colors.textMuted, fontSize: FontSize.md, fontWeight: '600' },
-    footer: {
-        marginTop: Spacing.xl,
-        paddingBottom: Spacing.xl,
-        alignItems: 'center',
-    },
-    versionText: {
-        color: Colors.textMuted,
-        fontSize: 10,
-        opacity: 0.6,
-    },
-    debugFillBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: Spacing.sm,
-        padding: 6,
-        paddingHorizontal: 12,
-        borderRadius: BorderRadius.full,
-        backgroundColor: 'rgba(0, 102, 204, 0.05)',
-        borderWidth: 1,
-        borderColor: 'rgba(0, 102, 204, 0.1)',
-    },
-    debugFillText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: Colors.primary,
-    },
+  container: { flex: 1, backgroundColor: Colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background },
+  loadingText: { marginTop: Spacing.md, color: Colors.textSecondary, fontSize: FontSize.md },
+  scroll: { padding: Spacing.xl, paddingTop: 60 },
+  header: { alignItems: 'center', marginBottom: Spacing.xl },
+  title: { fontSize: 28, fontWeight: '800', color: Colors.primary, marginTop: Spacing.sm },
+  subtitle: { fontSize: 16, color: Colors.textSecondary, marginTop: 4 },
+  card: {
+    backgroundColor: Colors.white,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5
+  },
+  genderSection: { marginBottom: Spacing.lg },
+  label: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 8 },
+  genderRow: { flexDirection: 'row', gap: Spacing.md },
+  genderBtn: {
+    flex: 1, padding: Spacing.md, borderRadius: BorderRadius.md,
+    borderWidth: 1, borderColor: Colors.cardBorder, alignItems: 'center'
+  },
+  genderBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  genderText: { fontWeight: '600', color: Colors.textSecondary },
+  genderTextActive: { color: Colors.white },
+  btn: { marginTop: Spacing.md },
+  cancelLink: { marginTop: Spacing.md, alignItems: 'center', padding: Spacing.sm },
+  cancelText: { color: Colors.textMuted, fontSize: FontSize.md, fontWeight: '600' },
+  footer: {
+    marginTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
+    alignItems: 'center',
+  },
+  versionText: {
+    color: Colors.textMuted,
+    fontSize: 10,
+    opacity: 0.6,
+  },
+  debugFillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: Spacing.sm,
+    padding: 6,
+    paddingHorizontal: 12,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(0, 102, 204, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 102, 204, 0.1)',
+  },
+  debugFillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
 });
