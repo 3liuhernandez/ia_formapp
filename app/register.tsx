@@ -137,7 +137,7 @@ export default function RegisterScreen() {
 
     await refreshHasProfile();
     Alert.alert('¡Éxito!', 'Perfil configurado correctamente.');
-    // RootNavigation detecta hasProfile=true y muestra /login
+    router.replace('/login');
   }
 
   async function handleEdit() {
