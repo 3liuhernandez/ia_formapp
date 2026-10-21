@@ -7,11 +7,11 @@ import type { Profile } from '@/database/repositories/profile.repository';
 export interface User {
   id: number;
   username: string;
-  name: string;                  // ← antes `nombre`
-  role: 'register' | 'admin';    // ← antes `role: number`
+  name: string;
+  role: 'register' | 'admin';
   profile?: Profile | null;
   token?: string;
-  expiresAt?: number;            // timestamp en ms
+  expiresAt?: number; // timestamp en ms
 }
 
 export interface SyncStats {

@@ -15,15 +15,15 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
@@ -152,8 +152,7 @@ export default function ProfileScreen() {
       if (updateInfo) {
         Alert.alert(
           'Actualización Disponible',
-          `Existe una nueva versión: v${updateInfo.version}\n\n${
-            updateInfo.releaseNotes || 'Mejoras de rendimiento y corrección de errores.'
+          `Existe una nueva versión: v${updateInfo.version}\n\n${updateInfo.releaseNotes || 'Mejoras de rendimiento y corrección de errores.'
           }\n\n¿Deseas descargar e instalar ahora?`,
           [
             { text: 'Ahora no', style: 'cancel', onPress: () => setUpdating(false) },
@@ -506,80 +505,80 @@ function StatRow({
 // ... los styles quedan igual que en tu archivo original
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.background },
-    content: { padding: Spacing.lg, paddingBottom: Spacing.xxl * 2 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.xl, marginBottom: Spacing.lg },
-    title: { color: Colors.primary, fontSize: FontSize.xxl, fontWeight: '800' },
-    goldLine: { width: 40, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginTop: Spacing.xs },
-    userCard: {
-        backgroundColor: Colors.white, borderRadius: BorderRadius.xl, padding: Spacing.xl, alignItems: 'center',
-        borderWidth: 1, borderColor: Colors.cardBorder, marginBottom: Spacing.lg,
-        shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-    },
-    avatarContainer: {
-        width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.surface, alignItems: 'center',
-        justifyContent: 'center', marginBottom: Spacing.md, borderWidth: 2, borderColor: Colors.gold,
-    },
-    userName: { color: Colors.text, fontSize: FontSize.xl, fontWeight: '800' },
-    userUsername: { color: Colors.textMuted, fontSize: FontSize.md, marginTop: Spacing.xs },
-    editBadge: {
-        flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.md,
-        paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full,
-        backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.cardBorder,
-    },
-    editBadgeText: { color: Colors.primary, fontSize: FontSize.xs, fontWeight: '600' },
-    roleBadge: {
-        flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm,
-        paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full,
-        backgroundColor: Colors.primary,
-    },
-    roleBadgeText: { color: Colors.white, fontSize: FontSize.xs, fontWeight: 'bold', textTransform: 'uppercase' },
-    section: { marginBottom: Spacing.lg },
-    sectionTitle: { color: Colors.wine, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.md },
-    statsCard: {
-        backgroundColor: Colors.white, borderRadius: BorderRadius.xl, padding: Spacing.lg,
-        borderWidth: 1, borderColor: Colors.cardBorder, shadowColor: Colors.black,
-        shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-    },
-    statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.sm },
-    statLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-    statLabel: { color: Colors.textSecondary, fontSize: FontSize.md },
-    statValue: { fontSize: FontSize.lg, fontWeight: '800' },
-    divider: { height: 1, backgroundColor: Colors.cardBorder, marginVertical: Spacing.xs },
-    progressSection: { paddingTop: Spacing.sm },
-    progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
-    progressBarBg: { height: 8, backgroundColor: Colors.surface, borderRadius: 4, overflow: 'hidden' },
-    progressBarFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 4 },
-    infoCard: {
-        backgroundColor: Colors.white, borderRadius: BorderRadius.xl, padding: Spacing.lg,
-        borderWidth: 1, borderColor: Colors.cardBorder, flexDirection: 'row', gap: Spacing.md,
-    },
-    infoText: { color: Colors.textSecondary, fontSize: FontSize.sm, flex: 1, lineHeight: 20 },
-    infoValue: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600', maxWidth: '60%' },
-    logoutButton: { marginTop: Spacing.sm },
-    // Version
-    versionContainer: { alignItems: 'center', marginTop: Spacing.xl, paddingTop: Spacing.lg },
-    appName: { color: Colors.primary, fontSize: FontSize.lg, fontWeight: '800', letterSpacing: 1 },
-    appFullName: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs },
-    versionGoldLine: { width: 30, height: 2, backgroundColor: Colors.gold, borderRadius: 1, marginVertical: Spacing.sm },
-    versionText: { color: Colors.textMuted, fontSize: FontSize.xs },
-    // Modal & Settings styles
-    modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
-    modalContent: {
-        backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl,
-        padding: Spacing.lg, maxHeight: '90%'
-    },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    modalTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.primary },
-    modalGoldLine: { width: 50, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginTop: Spacing.sm, marginBottom: Spacing.lg },
-    settingsItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm },
-    settingsIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
-    settingsContent: { flex: 1 },
-    settingsLabel: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600' },
-    settingsValue: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
-    settingsHint: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.lg, lineHeight: 20 },
-    inputGroup: { marginBottom: Spacing.md },
-    inputLabel: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: '600', marginBottom: Spacing.xs },
-    textInput: { backgroundColor: Colors.inputBg, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.inputBorder, padding: Spacing.md, color: Colors.text, fontSize: FontSize.md },
-    settingsActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
+  container: { flex: 1, backgroundColor: Colors.background },
+  content: { padding: Spacing.lg, paddingBottom: Spacing.xxl * 2 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: Spacing.xl, marginBottom: Spacing.lg },
+  title: { color: Colors.primary, fontSize: FontSize.xxl, fontWeight: '800' },
+  goldLine: { width: 40, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginTop: Spacing.xs },
+  userCard: {
+    backgroundColor: Colors.white, borderRadius: BorderRadius.xl, padding: Spacing.xl, alignItems: 'center',
+    borderWidth: 1, borderColor: Colors.cardBorder, marginBottom: Spacing.lg,
+    shadowColor: Colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+  },
+  avatarContainer: {
+    width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.surface, alignItems: 'center',
+    justifyContent: 'center', marginBottom: Spacing.md, borderWidth: 2, borderColor: Colors.gold,
+  },
+  userName: { color: Colors.text, fontSize: FontSize.xl, fontWeight: '800', textAlign: 'center' },
+  userUsername: { color: Colors.textMuted, fontSize: FontSize.md, marginTop: Spacing.xs },
+  editBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.md,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.cardBorder,
+  },
+  editBadgeText: { color: Colors.primary, fontSize: FontSize.xs, fontWeight: '600' },
+  roleBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary,
+  },
+  roleBadgeText: { color: Colors.white, fontSize: FontSize.xs, fontWeight: 'bold', textTransform: 'uppercase' },
+  section: { marginBottom: Spacing.lg },
+  sectionTitle: { color: Colors.wine, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.md },
+  statsCard: {
+    backgroundColor: Colors.white, borderRadius: BorderRadius.xl, padding: Spacing.lg,
+    borderWidth: 1, borderColor: Colors.cardBorder, shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.sm },
+  statLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  statLabel: { color: Colors.textSecondary, fontSize: FontSize.md },
+  statValue: { fontSize: FontSize.lg, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: Colors.cardBorder, marginVertical: Spacing.xs },
+  progressSection: { paddingTop: Spacing.sm },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
+  progressBarBg: { height: 8, backgroundColor: Colors.surface, borderRadius: 4, overflow: 'hidden' },
+  progressBarFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 4 },
+  infoCard: {
+    backgroundColor: Colors.white, borderRadius: BorderRadius.xl, padding: Spacing.lg,
+    borderWidth: 1, borderColor: Colors.cardBorder, flexDirection: 'row', gap: Spacing.md,
+  },
+  infoText: { color: Colors.textSecondary, fontSize: FontSize.sm, flex: 1, lineHeight: 20 },
+  infoValue: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600', maxWidth: '60%' },
+  logoutButton: { marginTop: Spacing.sm },
+  // Version
+  versionContainer: { alignItems: 'center', marginTop: Spacing.xl, paddingTop: Spacing.lg },
+  appName: { color: Colors.primary, fontSize: FontSize.lg, fontWeight: '800', letterSpacing: 1 },
+  appFullName: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.xs },
+  versionGoldLine: { width: 30, height: 2, backgroundColor: Colors.gold, borderRadius: 1, marginVertical: Spacing.sm },
+  versionText: { color: Colors.textMuted, fontSize: FontSize.xs },
+  // Modal & Settings styles
+  modalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: Colors.white, borderTopLeftRadius: BorderRadius.xl, borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.lg, maxHeight: '90%'
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.primary },
+  modalGoldLine: { width: 50, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginTop: Spacing.sm, marginBottom: Spacing.lg },
+  settingsItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm },
+  settingsIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
+  settingsContent: { flex: 1 },
+  settingsLabel: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600' },
+  settingsValue: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
+  settingsHint: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.lg, lineHeight: 20 },
+  inputGroup: { marginBottom: Spacing.md },
+  inputLabel: { color: Colors.primary, fontSize: FontSize.sm, fontWeight: '600', marginBottom: Spacing.xs },
+  textInput: { backgroundColor: Colors.inputBg, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.inputBorder, padding: Spacing.md, color: Colors.text, fontSize: FontSize.md },
+  settingsActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.lg },
 });
