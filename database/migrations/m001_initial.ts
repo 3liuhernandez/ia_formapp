@@ -72,7 +72,7 @@ export const m001_initial: Migration = {
       CREATE INDEX IF NOT EXISTS idx_people_synced         ON people(synced);
 
       INSERT OR REPLACE INTO user (username, password, name, role_name, role_id)
-      VALUES ('admin', 'admin123', 'Servidor', 'admin', 2);
+      VALUES ('admin', 'admin123', 'Servidor', 'register', 1);
     `);
   },
 };

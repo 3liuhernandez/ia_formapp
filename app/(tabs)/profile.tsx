@@ -201,11 +201,11 @@ export default function ProfileScreen() {
         </Text>
         <Text style={styles.userUsername}>{profile?.email || '-'}</Text>
 
-        {user?.role && (
+        {user?.role_name && (
           <View style={styles.roleBadge}>
             <Ionicons name="shield-checkmark" size={14} color={Colors.white} />
             <Text style={styles.roleBadgeText}>
-              {ROLE_NAMES[user.role] || 'Usuario'}
+              {ROLE_NAMES[user.role_name] || 'Usuario'}
             </Text>
           </View>
         )}

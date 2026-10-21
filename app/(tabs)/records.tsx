@@ -4,8 +4,8 @@ import { SyncBadge } from '@/components/SyncBadge';
 import { BorderRadius, Colors, FontSize, Spacing } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import {
-    peopleRepo,
-    type Person,
+  peopleRepo,
+  type Person,
 } from '@/database/repositories/people.repository';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { fetchPersonasLog } from '@/services/api';
@@ -17,16 +17,16 @@ import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useCallback, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 function apiToPerson(api: any): Person {
@@ -68,8 +68,8 @@ export default function RecordsScreen() {
   const [exportTo, setExportTo] = useState('');
   const [exporting, setExporting] = useState(false);
 
-  const isRegisterRole = user?.role === 'register';
-  const isAdminRole = user?.role === 'admin';
+  const isRegisterRole = user?.role_name === 'register';
+  const isAdminRole = user?.role_name === 'admin';
   const registrantDni = user?.profile?.dni ?? null;
 
   const loadData = useCallback(async () => {

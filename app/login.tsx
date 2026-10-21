@@ -29,18 +29,21 @@ function rowToSessionUser(row: UserRow): User {
     id: row.id,
     username: row.username,
     name: row.name,
-    role: row.role,
+    role_id: row.role_id,
+    role_name: row.role_name,
     token: row.token ?? undefined,
     expiresAt: row.expires_at ? new Date(row.expires_at).getTime() : undefined,
   };
 }
 
 function apiToSessionUser(api: any, fallbackUsername: string): User {
+  const roleName: 'register' | 'admin' = api.role === 'admin' ? 'admin' : 'register';
   return {
     id: api.id || 0,
     username: api.username || fallbackUsername,
     name: api.name || 'Usuario Online',
-    role: api.role === 'admin' ? 'admin' : 'register',
+    role_id: api.role_id ?? (roleName === 'admin' ? 2 : 1), // Default to 'register' role
+    role_name: roleName,
     token: api.token,
     expiresAt: api.expires_at
       ? new Date(api.expires_at).getTime()

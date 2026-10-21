@@ -5,7 +5,8 @@ export type User = {
   username: string;
   password: string;
   name: string;
-  role: 'register' | 'admin';
+  role_id: number;
+  role_name: 'register' | 'admin';
   profile_id: number | null;
   token: string | null;
   expires_at: string | null;
@@ -56,12 +57,12 @@ export const userRepo = {
 
   async create(
     db: SQLiteDatabase,
-    u: { username: string; password: string; name: string; role?: 'register' | 'admin'; profile_id?: number | null }
+    u: { username: string; password: string; name: string; role_id: number; role_name?: 'register' | 'admin';  profile_id?: number | null }
   ): Promise<number> {
     const result = await db.runAsync(
-      `INSERT INTO user (username, password, name, role, profile_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [u.username, u.password, u.name, u.role ?? 'register', u.profile_id ?? null]
+      `INSERT INTO user (username, password, name, role_id, role_name, profile_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [u.username, u.password, u.name, u.role_id ?? 1, u.role_name ?? 'register', u.profile_id ?? null]
     );
     return result.lastInsertRowId;
   },
@@ -69,11 +70,12 @@ export const userRepo = {
   async updateRole(
     db: SQLiteDatabase,
     id: number,
-    role: 'register' | 'admin'
+    role_name: 'register' | 'admin',
+    role_id: number = role_name === 'admin' ? 2 : 1
   ): Promise<void> {
     await db.runAsync(
-      `UPDATE user SET role = ?, updated_at = datetime('now','localtime') WHERE id = ?`,
-      [role, id]
+      `UPDATE user SET role_name = ?, role_id = ?, updated_at = datetime('now','localtime') WHERE id = ?`,
+      [role_name, role_id, id]
     );
   },
 };

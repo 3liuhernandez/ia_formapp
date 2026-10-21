@@ -8,7 +8,8 @@ export interface User {
   id: number;
   username: string;
   name: string;
-  role: 'register' | 'admin';
+  role_id: number;
+  role_name: 'register' | 'admin';
   profile?: Profile | null;
   token?: string;
   expiresAt?: number; // timestamp en ms

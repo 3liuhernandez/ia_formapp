@@ -6,7 +6,8 @@ export type NewUser = {
   username: string;
   password: string;
   name: string;
-  role?: 'register' | 'admin';
+  role_id: number;
+  role_name?: 'register' | 'admin';
   profile_id?: number | null;
 };
 
@@ -38,8 +39,8 @@ export function useUser() {
   );
 
   const updateRole = useCallback(
-    async (id: number, role: 'register' | 'admin') => {
-      await userRepo.updateRole(db, id, role);
+    async (id: number, role_name: 'register' | 'admin') => {
+      await userRepo.updateRole(db, id, role_name);
       await loadAll();
     },
     [db, loadAll]
