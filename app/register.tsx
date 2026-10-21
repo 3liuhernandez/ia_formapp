@@ -141,8 +141,13 @@ export default function RegisterScreen() {
   }
 
   async function handleEdit() {
+
+    if (!profile) {
+      throw new Error('No hay perfil para editar');
+    }
+
     const saved = await save({
-      dni: coerceString(form.dni).trim() || null,
+      dni: profile.dni,
       name: coerceString(form.name).trim(),
       last_name: coerceString(form.last_name).trim(),
       phone: coerceString(form.phone).trim(),
@@ -244,15 +249,30 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.card}>
-          <FormInput
-            label="Cédula *"
-            placeholder="Ej: 12345678"
-            value={form.dni}
-            onChangeText={(v) => updateField('dni', v)}
-            keyboardType="numeric"
-            error={errors.dni}
-            icon={<Ionicons name="card-outline" size={20} color={Colors.textMuted} />}
-          />
+          {isEditing ? (
+            <View style={styles.dniReadOnly}>
+              <Text style={styles.dniReadOnlyLabel}>Cédula (no editable)</Text>
+              <View style={styles.dniReadOnlyBox}>
+                <Ionicons name="lock-closed" size={16} color={Colors.textMuted} />
+                <Text style={styles.dniReadOnlyValue}>
+                  {form.dni || '—'}
+                </Text>
+              </View>
+              <Text style={styles.dniReadOnlyHint}>
+                Si necesitas cambiar la cédula, elimina el perfil y créalo de nuevo.
+              </Text>
+            </View>
+          ) : (
+            <FormInput
+              label="Cédula *"
+              placeholder="Ej: 12345678"
+              value={form.dni}
+              onChangeText={(v) => updateField('dni', v)}
+              keyboardType="numeric"
+              error={errors.dni}
+              icon={<Ionicons name="card-outline" size={20} color={Colors.textMuted} />}
+            />
+          )}
           <FormInput
             label="Nombres *"
             placeholder="Tus nombres"
@@ -393,5 +413,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.primary,
+  },
+  dniReadOnly: {
+    marginBottom: Spacing.md,
+  },
+  dniReadOnlyLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  dniReadOnlyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    backgroundColor: Colors.surface,   // gris para indicar "no editable"
+  },
+  dniReadOnlyValue: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  dniReadOnlyHint: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    marginTop: 6,
+    lineHeight: 16,
   },
 });
