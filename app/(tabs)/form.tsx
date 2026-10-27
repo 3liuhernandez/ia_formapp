@@ -11,8 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSQLiteContext } from 'expo-sqlite';
 import React, { useState } from 'react';
 import {
-    Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
-    StyleSheet, Text, TouchableOpacity, View,
+  Alert, KeyboardAvoidingView, Modal, Platform, ScrollView,
+  StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 
 const GENDER_OPTIONS = ['Hombre', 'Mujer'] as const;
@@ -53,12 +53,19 @@ export default function FormScreen() {
     const lastNames = ['Perez', 'Garcia', 'Gonzalez', 'Rodriguez', 'Lopez', 'Martinez', 'Hernandez', 'Diaz', 'Torres', 'Ramirez'];
     const locations = ['Calle Principal', 'Av. Bolivar', 'Barrio Obrero', 'Sector El Centro', 'Urbanización Nueva'];
     const domains = ['gmail.com', 'outlook.com', 'yahoo.com'];
+    const comments = ['Solicita información adicional', 'Prefiere contacto por WhatsApp', 'Ha participado antes', 'Requiere seguimiento especial'];
+    const parishes = ['Parroquia San Juan', 'Parroquia Santa Maria', 'Parroquia El Carmen', 'Parroquia La Paz'];
 
     const randomName = names[Math.floor(Math.random() * names.length)];
     const randomLastName = lastNames[Math.floor(Math.random() * lastNames.length)];
     const randomDni = String(Math.floor(Math.random() * 20000000 + 10000000));
     const randomPhone = '0414' + Math.floor(Math.random() * 9000000 + 1000000);
     const randomEmail = `${randomName.toLowerCase()}.${randomLastName.toLowerCase()}${Math.floor(Math.random() * 99)}@${domains[Math.floor(Math.random() * domains.length)]}`;
+    const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+    const randomComment = comments[Math.floor(Math.random() * comments.length)];
+    const randomVisitDay = new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Random date within the next 30 days
+    const randomVisitTime = `${String(Math.floor(Math.random() * 8 + 9)).padStart(2, '0')}:00`; // Random time between 09:00 and 16:00
+    const randomParish = parishes[Math.floor(Math.random() * parishes.length)];
 
     setForm({
       ...EMPTY_FORM,
@@ -67,11 +74,14 @@ export default function FormScreen() {
       last_name: randomLastName,
       phone: randomPhone,
       email: randomEmail,
-      address: locations[Math.floor(Math.random() * locations.length)],
+      address: randomLocation,
       address_reference: 'Punto de prueba',
-      parish: 'Sector Prueba',
+      parish: randomParish,
       birthday_date: '1990-01-01',
       gender: Math.random() > 0.5 ? 'M' : 'F',
+      visit_day: randomVisitDay,
+      visit_time: randomVisitTime,
+      comments: randomComment,
     });
     setErrors({});
   };
