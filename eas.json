@@ -13,7 +13,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-formapp-admin-3548.nextstepinternacional.com/api/v1",
         "EXPO_PUBLIC_API_KEY": "elimapp_prod_7b2e9d1c5a3f8b1e6d4c9a8f2a0b1d3e"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -23,14 +24,16 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-formapp-admin-3548.nextstepinternacional.com/api/v1",
         "EXPO_PUBLIC_API_KEY": "elimapp_prod_7b2e9d1c5a3f8b1e6d4c9a8f2a0b1d3e"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api-formapp-admin-3548.nextstepinternacional.com/api/v1",
         "EXPO_PUBLIC_API_KEY": "elimapp_prod_7b2e9d1c5a3f8b1e6d4c9a8f2a0b1d3e"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
