@@ -21,8 +21,12 @@ registerBackgroundSync().catch(console.error);
 function RootNavigation() {
   const { user, hasProfile, isLoading } = useAuth();
   const db = useSQLiteContext();
+  const { checkForUpdate } = useAppUpdate();
 
   React.useEffect(() => {
+    // Verificamos actualizaciones al iniciar la app
+    checkForUpdate();
+
     const remove = addNetworkListener((isConnected) => {
       if (isConnected && db) {
         syncPendingRecords(db).catch(console.error);
@@ -54,6 +58,8 @@ function RootNavigation() {
   return (
     <>
       <StatusBar style="dark" />
+      <UpdateModal />
+
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -103,15 +109,10 @@ function DatabaseBootstrap({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
 
   const { isFirstLaunch, isLoading } = useFirstLaunch();
-  const { checkForUpdate } = useAppUpdate();
 
   // Log desde el root, sin tocar DatabaseBootstrap
   useEffect(() => {
     if (!isLoading) console.log('[App] Primera ejecución:', isFirstLaunch);
-
-    // Verificamos actualizaciones al iniciar la app
-    checkForUpdate();
-
   }, [isFirstLaunch, isLoading]);
 
   if (isLoading) return <LoadingScreen />;
@@ -120,10 +121,7 @@ export default function RootLayout() {
     <Suspense fallback={<LoadingScreen />}>
       <DatabaseBootstrap>
         <AuthProvider>
-          <>
-            <RootNavigation />
-            <UpdateModal />
-          </>
+          <RootNavigation />
         </AuthProvider>
       </DatabaseBootstrap>
     </Suspense>
