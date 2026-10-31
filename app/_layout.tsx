@@ -10,6 +10,8 @@ import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 
+import { UpdateModal } from '@/components/UpdateModal';
+import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useFirstLaunch } from '@/hooks/useFirstLaunch';
 
 startNetworkMonitor();
@@ -101,10 +103,15 @@ function DatabaseBootstrap({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
 
   const { isFirstLaunch, isLoading } = useFirstLaunch();
+  const { checkForUpdate } = useAppUpdate();
 
   // Log desde el root, sin tocar DatabaseBootstrap
   useEffect(() => {
     if (!isLoading) console.log('[App] Primera ejecución:', isFirstLaunch);
+
+    // Verificamos actualizaciones al iniciar la app
+    checkForUpdate();
+
   }, [isFirstLaunch, isLoading]);
 
   if (isLoading) return <LoadingScreen />;
@@ -113,7 +120,10 @@ export default function RootLayout() {
     <Suspense fallback={<LoadingScreen />}>
       <DatabaseBootstrap>
         <AuthProvider>
-          <RootNavigation />
+          <>
+            <RootNavigation />
+            <UpdateModal />
+          </>
         </AuthProvider>
       </DatabaseBootstrap>
     </Suspense>
