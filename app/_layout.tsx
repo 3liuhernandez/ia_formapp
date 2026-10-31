@@ -1,6 +1,7 @@
 import { DatabaseErrorScreen } from '@/components/DatabaseErrorScreen';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { UpdateProvider, useAppUpdate } from '@/context/UpdateContext';
 import { initializeDatabase } from '@/database/schema';
 import { registerBackgroundSync } from '@/services/backgroundSync';
 import { addNetworkListener, startNetworkMonitor } from '@/services/network';
@@ -11,7 +12,6 @@ import { StatusBar } from 'expo-status-bar';
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 
 import { UpdateModal } from '@/components/UpdateModal';
-import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { useFirstLaunch } from '@/hooks/useFirstLaunch';
 
 startNetworkMonitor();
@@ -21,12 +21,14 @@ registerBackgroundSync().catch(console.error);
 function RootNavigation() {
   const { user, hasProfile, isLoading } = useAuth();
   const db = useSQLiteContext();
-  const { checkForUpdate } = useAppUpdate();
+  const { checkForUpdate } = useAppUpdate();   // ← Ahora sí: RootNavigation está dentro del provider
+
+  // Verificamos actualizaciones una sola vez al montar
+  React.useEffect(() => {
+    checkForUpdate();
+  }, []);
 
   React.useEffect(() => {
-    // Verificamos actualizaciones al iniciar la app
-    checkForUpdate();
-
     const remove = addNetworkListener((isConnected) => {
       if (isConnected && db) {
         syncPendingRecords(db).catch(console.error);
@@ -58,7 +60,6 @@ function RootNavigation() {
   return (
     <>
       <StatusBar style="dark" />
-      <UpdateModal />
 
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
@@ -113,6 +114,7 @@ export default function RootLayout() {
   // Log desde el root, sin tocar DatabaseBootstrap
   useEffect(() => {
     if (!isLoading) console.log('[App] Primera ejecución:', isFirstLaunch);
+
   }, [isFirstLaunch, isLoading]);
 
   if (isLoading) return <LoadingScreen />;
@@ -120,10 +122,13 @@ export default function RootLayout() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <DatabaseBootstrap>
-        <AuthProvider>
-          <RootNavigation />
-        </AuthProvider>
+        <UpdateProvider>
+          <AuthProvider>
+            <UpdateModal />
+            <RootNavigation />
+          </AuthProvider>
+        </UpdateProvider>
       </DatabaseBootstrap>
-    </Suspense>
+    </Suspense >
   );
 }

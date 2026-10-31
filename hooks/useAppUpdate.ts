@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import { useState } from 'react';
 import { Platform } from 'react-native';
 
-const UPDATE_MANIFEST_URL = 'https://app-distribution-server.nextstepinternacional.com/apps/mi-app-rn/android/stable/apk/version.json';
+const UPDATE_MANIFEST_URL = 'https://app-distribution-server.nextstepinternacional.com/apps/elimapp-iglc/android/stable/apk/latest.json';
 
 export interface UpdateInfo {
   versionCode: number;
@@ -29,11 +29,15 @@ export function useAppUpdate() {
       if (!response.ok) throw new Error('No se pudo obtener el manifiesto de actualización.');
 
       const manifest: UpdateInfo = await response.json();
+      // console.log('Manifiesto de actualización recibido:', manifest);
 
       // Obtenemos el versionCode instalado. En Android, nativeBuildVersion es el versionCode.
       const currentVersionCode = Application.nativeBuildVersion
         ? parseInt(Application.nativeBuildVersion, 10)
         : 0;
+
+      // console.log('currentVersionCode:', currentVersionCode);
+      console.log('manifest.versionCode:', manifest.versionCode);
 
       // Si la versión del servidor es mayor, hay una actualización disponible
       if (manifest.versionCode > currentVersionCode) {
@@ -55,6 +59,7 @@ export function useAppUpdate() {
     setIsDownloading(true);
     setDownloadProgress(0);
     const apkUri = `${FileSystem.cacheDirectory}update.apk`;
+    console.log('Descargando APK desde:', updateInfo.url);
 
     try {
       const downloadResumable = FileSystem.createDownloadResumable(

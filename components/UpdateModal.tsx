@@ -1,7 +1,7 @@
 // components/UpdateModal.tsx
+import { useAppUpdate } from '@/context/UpdateContext';
 import React from 'react';
 import { ActivityIndicator, Button, Modal, StyleSheet, Text, View } from 'react-native';
-import { useAppUpdate } from '../hooks/useAppUpdate';
 
 export function UpdateModal() {
   const {
@@ -12,6 +12,8 @@ export function UpdateModal() {
     checkForUpdate,
     downloadAndInstall,
   } = useAppUpdate();
+
+  // console.log('[UpdateModal] render | updateInfo:', updateInfo);
 
   // El modal solo se muestra si hay una actualización disponible
   if (!updateInfo) return null;
