@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scrollContent: { padding: Spacing.xs, paddingBottom: Spacing.xxl * 2 },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg, marginTop: Spacing.xl, paddingHorizontal: Spacing.md },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg, marginTop: Spacing.xl, paddingHorizontal: Spacing.xs },
 
   title: { color: Colors.primary, fontSize: FontSize.xxl, fontWeight: '800' },
   goldLine: {
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   listContent: { padding: Spacing.lg, paddingTop: 0, paddingBottom: Spacing.xxl * 2 },
-  statsRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
+  statsRow: { flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.md },
   actionRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
   actionBtn: { flex: 1 },
   searchContainer: {
