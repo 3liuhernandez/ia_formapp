@@ -8,7 +8,9 @@ import { syncPendingRecords } from '@/services/sync';
 import { Stack } from 'expo-router';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import React, { Suspense, useCallback, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
+
+import { useFirstLaunch } from '@/hooks/useFirstLaunch';
 
 startNetworkMonitor();
 registerBackgroundSync().catch(console.error);
@@ -49,6 +51,7 @@ function RootNavigation() {
 
   return (
     <>
+      <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
@@ -56,7 +59,6 @@ function RootNavigation() {
           options={{ headerShown: true, title: 'Editar Perfil', presentation: 'modal' }}
         />
       </Stack>
-      <StatusBar style="dark" />
     </>
   );
 }
@@ -97,6 +99,16 @@ function DatabaseBootstrap({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
+
+  const { isFirstLaunch, isLoading } = useFirstLaunch();
+
+  // Log desde el root, sin tocar DatabaseBootstrap
+  useEffect(() => {
+    if (!isLoading) console.log('[App] Primera ejecución:', isFirstLaunch);
+  }, [isFirstLaunch, isLoading]);
+
+  if (isLoading) return <LoadingScreen />;
+
   return (
     <Suspense fallback={<LoadingScreen />}>
       <DatabaseBootstrap>

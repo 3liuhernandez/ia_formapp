@@ -1,6 +1,5 @@
 // import { SyncBadge } from '@/components/SyncBadge';
 import { Colors, Spacing } from '@/constants/theme';
-import { useAuth } from '@/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import React from 'react';
@@ -58,7 +57,6 @@ function CustomTopHeader() {
 }
 
 export default function TabLayout() {
-  const { user } = useAuth();
 
   return (
     <View style={{ flex: 1 }}>

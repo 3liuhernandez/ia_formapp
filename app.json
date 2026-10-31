@@ -2,7 +2,7 @@
   "expo": {
     "name": "ElimAPP",
     "slug": "elimapp",
-    "version": "1.0.0",
+    "version": "sdkVersion",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "elimapp",
@@ -57,7 +57,7 @@
       }
     },
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "sdkVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/be9368cc-04b2-4a64-9804-c361b2913ed9"

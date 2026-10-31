@@ -357,8 +357,9 @@ export default function FormScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
-    scrollContent: { padding: Spacing.lg, paddingBottom: Spacing.xxl * 2 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg, marginTop: Spacing.xl },
+    scrollContent: { padding: Spacing.xs, paddingBottom: Spacing.xxl * 2 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg, marginTop: Spacing.xl, paddingHorizontal: Spacing.md },
+
     title: { color: Colors.primary, fontSize: FontSize.xxl, fontWeight: '800' },
     goldLine: { width: 40, height: 3, backgroundColor: Colors.gold, borderRadius: 2, marginTop: Spacing.xs },
     formCard: {

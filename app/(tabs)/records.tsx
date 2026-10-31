@@ -19,7 +19,9 @@ import React, { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -156,8 +158,7 @@ export default function RecordsScreen() {
     } catch (err) {
       Alert.alert(
         'Error',
-        `Error durante la sincronización: ${
-          err instanceof Error ? err.message : 'Verifica la conexión'
+        `Error durante la sincronización: ${err instanceof Error ? err.message : 'Verifica la conexión'
         }`
       );
     } finally {
@@ -304,217 +305,229 @@ export default function RecordsScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Registros</Text>
-          <View style={styles.goldLine} />
-        </View>
-        <SyncBadge isConnected={isConnected} pendingCount={stats.pending} />
-      </View>
-
-      <FlatList
-        data={people}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <RecordCard person={item} onDelete={handleDelete} onPress={setSelectedPerson} />
-        )}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmpty}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={Colors.primary}
-            colors={[Colors.primary]}
-          />
-        }
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-      />
-
-      {/* Detail Modal */}
-      <Modal
-        visible={!!selectedPerson}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedPerson(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Detalle del Registro</Text>
-              <TouchableOpacity onPress={() => setSelectedPerson(null)}>
-                <Ionicons name="close-circle" size={28} color={Colors.textMuted} />
-              </TouchableOpacity>
+        <View style={styles.container}>
+
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>Registros</Text>
+              <View style={styles.goldLine} />
             </View>
-            <View style={styles.modalGoldLine} />
-            {selectedPerson && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.detailAvatar}>
-                  <Ionicons name="person" size={40} color={Colors.primary} />
-                </View>
-                <Text style={styles.detailName}>
-                  {selectedPerson.name} {selectedPerson.last_name}
-                </Text>
-                <View
-                  style={[
-                    styles.detailBadge,
-                    selectedPerson.synced === 1 ? styles.badgeSynced : styles.badgePending,
-                  ]}
-                >
-                  <Ionicons
-                    name={selectedPerson.synced === 1 ? 'cloud-done' : 'cloud-offline'}
-                    size={14}
-                    color={selectedPerson.synced === 1 ? Colors.success : Colors.warning}
-                  />
-                  <Text
-                    style={{
-                      color: selectedPerson.synced === 1 ? Colors.success : Colors.warning,
-                      fontSize: FontSize.sm,
-                      fontWeight: '600',
-                    }}
-                  >
-                    {selectedPerson.synced === 1 ? 'Sincronizado' : 'Pendiente de envío'}
-                  </Text>
-                </View>
+            <SyncBadge isConnected={isConnected} pendingCount={stats.pending} />
+          </View>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>DATOS PERSONALES</Text>
-                  <DetailField icon="card" label="Cédula" value={selectedPerson.dni} />
-                  <DetailField
-                    icon="calendar"
-                    label="Fecha Nac."
-                    value={selectedPerson.birthday_date || '-'}
-                  />
-                  <DetailField
-                    icon="male-female"
-                    label="Género"
-                    value={selectedPerson.gender === 'M' ? 'Hombre' : 'Mujer'}
-                  />
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>CONTACTO</Text>
-                  <DetailField icon="call" label="Teléfono" value={selectedPerson.phone} />
-                  <DetailField
-                    icon="call"
-                    label="Tel. Opcional"
-                    value={selectedPerson.phone_optional || '-'}
-                  />
-                  <DetailField icon="mail" label="Email" value={selectedPerson.email || '-'} />
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>UBICACIÓN</Text>
-                  <DetailField
-                    icon="location"
-                    label="Dirección"
-                    value={selectedPerson.address || '-'}
-                  />
-                  <DetailField
-                    icon="navigate"
-                    label="Referencia"
-                    value={selectedPerson.address_reference || '-'}
-                  />
-                  <DetailField
-                    icon="map"
-                    label="Parroquia / Sector"
-                    value={selectedPerson.parish || '-'}
-                  />
-                </View>
-
-                {selectedPerson.comments ? (
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionTitle}>COMENTARIOS</Text>
-                    <DetailField
-                      icon="chatbubble"
-                      label="Notas"
-                      value={selectedPerson.comments}
-                    />
-                  </View>
-                ) : null}
-
-                {selectedPerson.visit_day ? (
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionTitle}>VISITA</Text>
-                    <DetailField
-                      icon="calendar"
-                      label="Día"
-                      value={selectedPerson.visit_day}
-                    />
-                    <DetailField
-                      icon="time"
-                      label="Hora"
-                      value={selectedPerson.visit_time || '-'}
-                    />
-                  </View>
-                ) : null}
-
-                <DetailField icon="time" label="Registrado" value={selectedPerson.created_at} />
-                <Button
-                  title="Cerrar"
-                  onPress={() => setSelectedPerson(null)}
-                  variant="secondary"
-                  style={{ marginTop: Spacing.sm }}
-                />
-              </ScrollView>
+          <FlatList
+            data={people}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <RecordCard person={item} onDelete={handleDelete} onPress={setSelectedPerson} />
             )}
-          </View>
-        </View>
-      </Modal>
+            ListHeaderComponent={renderHeader}
+            ListEmptyComponent={renderEmpty}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={Colors.primary}
+                colors={[Colors.primary]}
+              />
+            }
+            showsVerticalScrollIndicator={false}
+          />
 
-      {/* Export Modal */}
-      <Modal
-        visible={showExportModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowExportModal(false)}
-      >
-        <View style={styles.exportOverlay}>
-          <View style={styles.exportContent}>
-            <Text style={styles.exportTitle}>Exportar a Excel</Text>
-            <View style={styles.modalGoldLine} />
-            <Text style={styles.exportHint}>
-              Deja vacío para exportar todos los registros
-            </Text>
-            <FormInputSmall
-              label="Desde (DD/MM/AAAA)"
-              placeholder="01/01/2025"
-              value={exportFrom}
-              onChangeText={setExportFrom}
-              keyboardType="numeric"
-            />
-            <FormInputSmall
-              label="Hasta (DD/MM/AAAA)"
-              placeholder="31/12/2025"
-              value={exportTo}
-              onChangeText={setExportTo}
-              keyboardType="numeric"
-            />
-            <View style={styles.exportActions}>
-              <Button
-                title="Cancelar"
-                onPress={() => {
-                  setShowExportModal(false);
-                  setExportFrom('');
-                  setExportTo('');
-                }}
-                variant="secondary"
-                style={{ flex: 1 }}
-              />
-              <Button
-                title="Exportar"
-                onPress={handleExport}
-                loading={exporting}
-                style={{ flex: 1 }}
-                icon={<Ionicons name="download-outline" size={18} color={Colors.white} />}
-              />
+          {/* Detail Modal */}
+          <Modal
+            visible={!!selectedPerson}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setSelectedPerson(null)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Detalle del Registro</Text>
+                  <TouchableOpacity onPress={() => setSelectedPerson(null)}>
+                    <Ionicons name="close-circle" size={28} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalGoldLine} />
+                {selectedPerson && (
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    <View style={styles.detailAvatar}>
+                      <Ionicons name="person" size={40} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.detailName}>
+                      {selectedPerson.name} {selectedPerson.last_name}
+                    </Text>
+                    <View
+                      style={[
+                        styles.detailBadge,
+                        selectedPerson.synced === 1 ? styles.badgeSynced : styles.badgePending,
+                      ]}
+                    >
+                      <Ionicons
+                        name={selectedPerson.synced === 1 ? 'cloud-done' : 'cloud-offline'}
+                        size={14}
+                        color={selectedPerson.synced === 1 ? Colors.success : Colors.warning}
+                      />
+                      <Text
+                        style={{
+                          color: selectedPerson.synced === 1 ? Colors.success : Colors.warning,
+                          fontSize: FontSize.sm,
+                          fontWeight: '600',
+                        }}
+                      >
+                        {selectedPerson.synced === 1 ? 'Sincronizado' : 'Pendiente de envío'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>DATOS PERSONALES</Text>
+                      <DetailField icon="card" label="Cédula" value={selectedPerson.dni} />
+                      <DetailField
+                        icon="calendar"
+                        label="Fecha Nac."
+                        value={selectedPerson.birthday_date || '-'}
+                      />
+                      <DetailField
+                        icon="male-female"
+                        label="Género"
+                        value={selectedPerson.gender === 'M' ? 'Hombre' : 'Mujer'}
+                      />
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>CONTACTO</Text>
+                      <DetailField icon="call" label="Teléfono" value={selectedPerson.phone} />
+                      <DetailField
+                        icon="call"
+                        label="Tel. Opcional"
+                        value={selectedPerson.phone_optional || '-'}
+                      />
+                      <DetailField icon="mail" label="Email" value={selectedPerson.email || '-'} />
+                    </View>
+
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>UBICACIÓN</Text>
+                      <DetailField
+                        icon="location"
+                        label="Dirección"
+                        value={selectedPerson.address || '-'}
+                      />
+                      <DetailField
+                        icon="navigate"
+                        label="Referencia"
+                        value={selectedPerson.address_reference || '-'}
+                      />
+                      <DetailField
+                        icon="map"
+                        label="Parroquia / Sector"
+                        value={selectedPerson.parish || '-'}
+                      />
+                    </View>
+
+                    {selectedPerson.comments ? (
+                      <View style={styles.detailSection}>
+                        <Text style={styles.detailSectionTitle}>COMENTARIOS</Text>
+                        <DetailField
+                          icon="chatbubble"
+                          label="Notas"
+                          value={selectedPerson.comments}
+                        />
+                      </View>
+                    ) : null}
+
+                    {selectedPerson.visit_day ? (
+                      <View style={styles.detailSection}>
+                        <Text style={styles.detailSectionTitle}>VISITA</Text>
+                        <DetailField
+                          icon="calendar"
+                          label="Día"
+                          value={selectedPerson.visit_day}
+                        />
+                        <DetailField
+                          icon="time"
+                          label="Hora"
+                          value={selectedPerson.visit_time || '-'}
+                        />
+                      </View>
+                    ) : null}
+
+                    <DetailField icon="time" label="Registrado" value={selectedPerson.created_at} />
+                    <Button
+                      title="Cerrar"
+                      onPress={() => setSelectedPerson(null)}
+                      variant="secondary"
+                      style={{ marginTop: Spacing.sm }}
+                    />
+                  </ScrollView>
+                )}
+              </View>
             </View>
-          </View>
+          </Modal>
+
+          {/* Export Modal */}
+          <Modal
+            visible={showExportModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowExportModal(false)}
+          >
+            <View style={styles.exportOverlay}>
+              <View style={styles.exportContent}>
+                <Text style={styles.exportTitle}>Exportar a Excel</Text>
+                <View style={styles.modalGoldLine} />
+                <Text style={styles.exportHint}>
+                  Deja vacío para exportar todos los registros
+                </Text>
+                <FormInputSmall
+                  label="Desde (DD/MM/AAAA)"
+                  placeholder="01/01/2025"
+                  value={exportFrom}
+                  onChangeText={setExportFrom}
+                  keyboardType="numeric"
+                />
+                <FormInputSmall
+                  label="Hasta (DD/MM/AAAA)"
+                  placeholder="31/12/2025"
+                  value={exportTo}
+                  onChangeText={setExportTo}
+                  keyboardType="numeric"
+                />
+                <View style={styles.exportActions}>
+                  <Button
+                    title="Cancelar"
+                    onPress={() => {
+                      setShowExportModal(false);
+                      setExportFrom('');
+                      setExportTo('');
+                    }}
+                    variant="secondary"
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    title="Exportar"
+                    onPress={handleExport}
+                    loading={exporting}
+                    style={{ flex: 1 }}
+                    icon={<Ionicons name="download-outline" size={18} color={Colors.white} />}
+                  />
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
-      </Modal>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -638,14 +651,10 @@ const scStyles = StyleSheet.create({
 // ─── Styles sin cambios ─────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl + Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
+  scrollContent: { padding: Spacing.xs, paddingBottom: Spacing.xxl * 2 },
+
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg, marginTop: Spacing.xl, paddingHorizontal: Spacing.md },
+
   title: { color: Colors.primary, fontSize: FontSize.xxl, fontWeight: '800' },
   goldLine: {
     width: 40,
