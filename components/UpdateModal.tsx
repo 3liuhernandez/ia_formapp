@@ -14,8 +14,6 @@ export function UpdateModal() {
     dismissUpdate,
   } = useAppUpdate();
 
-  // console.log('[UpdateModal] render | updateInfo:', updateInfo);
-
   // El modal solo se muestra si hay una actualización disponible
   if (!updateInfo) return null;
 

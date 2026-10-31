@@ -44,7 +44,6 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
                 : 0;
 
             if (manifest.versionCode > currentVersionCode) {
-                console.log('[Update] Manifest:', manifest, '| Instalado:', currentVersionCode);
                 setUpdateInfo(manifest);
             } else {
                 setUpdateInfo(null);
@@ -61,7 +60,6 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         setIsDownloading(true);
         setDownloadProgress(0);
         const apkUri = `${FileSystem.cacheDirectory}update.apk`;
-        console.log('apkUri', apkUri)
         try {
             const downloadResumable = FileSystem.createDownloadResumable(
                 updateInfo.url,
