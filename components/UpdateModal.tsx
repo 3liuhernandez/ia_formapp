@@ -11,6 +11,7 @@ export function UpdateModal() {
     downloadProgress,
     checkForUpdate,
     downloadAndInstall,
+    dismissUpdate,
   } = useAppUpdate();
 
   // console.log('[UpdateModal] render | updateInfo:', updateInfo);
@@ -47,7 +48,7 @@ export function UpdateModal() {
             <View style={styles.buttonContainer}>
               <Button title="Actualizar ahora" onPress={downloadAndInstall} />
               {/* Opcional: Botón para cancelar */}
-              <Button title="Más tarde" onPress={() => { /* Lógica para cerrar */ }} color="#999" />
+              <Button title="Más tarde" onPress={dismissUpdate} color="#999" />
             </View>
           )}
         </View>
