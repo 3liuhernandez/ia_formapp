@@ -1,5 +1,4 @@
 // hooks/useAppUpdate.ts
-import * as ApkInstaller from 'expo-apk-installer';
 import * as Application from 'expo-application';
 import * as FileSystem from 'expo-file-system';
 import { useState } from 'react';
@@ -30,7 +29,7 @@ export function useAppUpdate() {
       if (!response.ok) throw new Error('No se pudo obtener el manifiesto de actualización.');
 
       const manifest: UpdateInfo = await response.json();
-      
+
       // Obtenemos el versionCode instalado. En Android, nativeBuildVersion es el versionCode.
       const currentVersionCode = Application.nativeBuildVersion
         ? parseInt(Application.nativeBuildVersion, 10)
@@ -55,8 +54,6 @@ export function useAppUpdate() {
 
     setIsDownloading(true);
     setDownloadProgress(0);
-
-    // Definimos la ruta donde se guardará el APK en la caché de la app
     const apkUri = `${FileSystem.cacheDirectory}update.apk`;
 
     try {
@@ -64,25 +61,17 @@ export function useAppUpdate() {
         updateInfo.url,
         apkUri,
         {},
-        (downloadProgress) => {
-          const progress =
-            downloadProgress.totalBytesWritten /
-            downloadProgress.totalBytesExpectedToWrite;
-          setDownloadProgress(progress);
-        }
+        (p) => setDownloadProgress(p.totalBytesWritten / p.totalBytesExpectedToWrite)
       );
 
       const result = await downloadResumable.downloadAsync();
+      if (!result?.uri) throw new Error('La descarga del APK falló.');
 
-      if (result?.uri) {
-        // Una vez descargado, lanzamos el instalador del sistema
-        await ApkInstaller.install(result.uri);
-      } else {
-        throw new Error('La descarga del APK falló.');
-      }
+      // Import dinámico: solo se resuelve cuando el usuario pulsa "Actualizar"
+      const ApkInstaller = await import('expo-apk-installer');
+      await ApkInstaller.install(result.uri);
     } catch (error) {
       console.error('Error durante la descarga o instalación:', error);
-      // Aquí podrías alertar al usuario de que algo salió mal
     } finally {
       setIsDownloading(false);
     }
